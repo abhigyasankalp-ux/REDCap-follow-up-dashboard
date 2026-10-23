@@ -1,0 +1,45 @@
+# =====================================================================
+# SANKALP RESEARCH - REDCap Newborn Follow-up Dashboard
+# Security & Privacy .gitignore (HIPAA / PHI / Raw Data Protection)
+# =====================================================================
+
+# 1. Raw Primary Data & Patient Records (STRICT PRIVACY PROTECTION)
+/REDCap data/
+/Anmol Delivery Data/
+/SNCU Data/
+/SNCU Khandwa/
+/Location and contact/
+/Data validation/
+/Reporting format/
+
+# 2. Raw Spreadsheets & Excel / Data Files
+*.xlsx
+*.xls
+*.csv
+!templates/*.csv
+
+# 3. Large Offline Binary Packages & Wheels
+/wheels/
+*.whl
+
+# 4. Large Knowledge Graphs & Monolithic Builds (> 25MB)
+/graphify-out/
+Redcap Data and Follow-up Dashboard.html
+
+# 5. Temporary, Lock, and Cache Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.tmp
+~$*
+*.log
+/scratch/
+.system_generated/
+
+# 6. IDE & Environment Configurations
+.vscode/
+.idea/
+.venv/
+env/
+venv/
+ENV/

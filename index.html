@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sankalp Follow-up Dashboard</title>
+    <link rel="stylesheet" href="templates/index.css">
+    <!-- Chart.js Standalone Bundle -->
+    <script src="templates/chart.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sticky Header Navbar -->
+        <header class="app-header">
+            <div class="header-inner">
+                <div class="brand-section">
+                    <div class="brand-logo">S</div>
+                    <div class="brand-title-wrap">
+                        <span class="brand-title">Sankalp Research</span>
+                        <span class="brand-subtitle">Newborn Follow-up Dashboard <span id="dashboard-last-updated" style="font-size: 0.72rem; color: #64748b; font-weight: 500; margin-left: 8px;"></span></span>
+                    </div>
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 14px;">
+                    <span class="developer-credit" style="font-size: 0.78rem; font-weight: 600; color: #0f766e; background: #ccfbf1; border: 1px solid #99f6e4; padding: 5px 12px; border-radius: 6px; white-space: nowrap;">Developer: Dr Vikar Saiyad</span>
+                    <button id="reset-filters" class="reset-filters-btn" title="Reset all active filters">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Reset Filters
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body Wrapper -->
+        <main class="app-main">
+            
+            <!-- 1. Filters Dashboard Panel -->
+            <section class="filters-panel" aria-label="Filters Panel">
+                <div class="filters-header">
+                    <span class="filters-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 16px; height: 16px; stroke: var(--color-primary);">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+                        </svg>
+                        Dashboard Filters
+                    </span>
+                </div>
+                <div class="filters-grid">
+                    <!-- Month Filter (Custom Multiselect) -->
+                    <div class="filter-group" style="position: relative;">
+                        <label class="filter-label">MONTH OF DELIVERY</label>
+                        <div class="custom-multiselect" id="multiselect-month" style="width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; position: relative;">
+                            <div class="multiselect-select-box" style="padding: 6px 12px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center; height: 36px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);" onclick="toggleMonthDropdown(event)">
+                                <span id="multiselect-label-month">All Months</span>
+                                <svg style="width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                            <div class="multiselect-options-container" id="multiselect-options-month" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-sm); max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: var(--shadow-md); padding: 6px 0;">
+                                <div style="padding: 4px 12px; border-bottom: 1px solid var(--color-bg-sunken); display: flex; justify-content: space-between; gap: 8px;">
+                                    <button onclick="selectMonthPreset('ALL', event)" style="background: none; border: none; color: var(--color-primary); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0;">Select All</button>
+                                    <button onclick="selectMonthPreset('NONE', event)" style="background: none; border: none; color: var(--color-text-muted); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0;">Clear All</button>
+                                </div>
+                                <div id="multiselect-checkbox-list-month">
+                                    <!-- Checkboxes populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Block Filter -->
+                    <div class="filter-group">
+                        <label for="filter-block" class="filter-label">BLOCK / TALUK</label>
+                        <select id="filter-block" class="filter-select">
+                            <option value="ALL">All Blocks</option>
+                        </select>
+                    </div>
+                    <!-- Delivery Coordinator Filter -->
+                    <div class="filter-group">
+                        <label for="filter-deliv-coord" class="filter-label">Delivery Record entered by</label>
+                        <select id="filter-deliv-coord" class="filter-select">
+                            <option value="ALL">All Coordinators</option>
+                        </select>
+                    </div>
+                    <!-- Follow-up Coordinator Filter -->
+                    <div class="filter-group">
+                        <label for="filter-followup-coord" class="filter-label">Follow-up done by</label>
+                        <select id="filter-followup-coord" class="filter-select">
+                            <option value="ALL">All Coordinators</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Tab Navigation Header -->
+            <nav class="tab-navigation" aria-label="Dashboard Tab Navigation">
+                <button class="tab-btn active" data-tab="overview">
+                    Overview
+                </button>
+                <button class="tab-btn" data-tab="overall">
+                    Overall List
+                    <span id="badge-overall" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="pending">
+                    Pending Calls
+                    <span id="badge-pending" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="lost-followup">
+                    Lost to Follow-up
+                    <span id="badge-lost-followup" class="tab-badge" style="background: #fef3c7; color: #92400e;">0</span>
+                </button>
+                <button class="tab-btn" data-tab="deaths">
+                    Neonatal Deaths
+                    <span id="badge-deaths" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="stillbirths">
+                    Stillbirths
+                    <span id="badge-stillbirths" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="out-range-deaths">
+                    Out-of-Range Deaths
+                    <span id="badge-out-range-deaths" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="home-deliveries">
+                    Home Deliveries
+                    <span id="badge-home-deliveries" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="out-district-deliveries">
+                    Out-of-District
+                    <span id="badge-out-district-deliveries" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="sncu-deaths">
+                    Khargone SNCU Deaths
+                    <span id="badge-sncu-deaths" class="tab-badge">0</span>
+                </button>
+                <button class="tab-btn" data-tab="khandwa-sncu-deaths">
+                    Khandwa SNCU Deaths
+                    <span id="badge-khandwa-sncu-deaths" class="tab-badge">0</span>
+                </button>
+            </nav>
+
+            <!-- ================= TAB 1: OVERVIEW & KPIS ================= -->
+            <div id="panel-overview" class="tab-panel active">
+                <!-- Summary Statistics Cards -->
+                <section class="kpis-grid" aria-label="Key Performance Indicators">
+                    <div class="kpi-card kpi-completed">
+                        <span class="kpi-title">Follow-up Completed</span>
+                        <div>
+                            <div id="kpi-completion-rate" class="kpi-value">0%</div>
+                            <div id="kpi-completion-detail" class="kpi-subtext" style="color: var(--color-success);">0 completed</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-pending">
+                        <span class="kpi-title">Follow-up Pending</span>
+                        <div>
+                            <div id="kpi-pending-count" class="kpi-value">0</div>
+                            <div id="kpi-pending-detail" class="kpi-subtext" style="color: var(--color-warning);">0 babies remaining</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-lost" style="border-left: 4px solid #f59e0b; cursor: pointer;" onclick="document.querySelector('[data-tab=\'lost-followup\']').click()" title="Click to view Lost to Follow-up cases">
+                        <span class="kpi-title">Lost to Follow-up</span>
+                        <div>
+                            <div id="kpi-lost-count" class="kpi-value" style="color: #d97706;">0</div>
+                            <div id="kpi-lost-detail" class="kpi-subtext" style="color: #b45309;">0 cases</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-nmr">
+                        <span class="kpi-title">Neonatal Mortality Rate</span>
+                        <div>
+                            <div id="kpi-nmr-rate" class="kpi-value">0.00</div>
+                            <div id="kpi-nmr-detail" class="kpi-subtext" style="color: var(--color-danger);">0 deaths / 0 live births</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-sb">
+                        <span class="kpi-title">Stillbirth Rate</span>
+                        <div>
+                            <div id="kpi-stillbirth-rate" class="kpi-value">0.00</div>
+                            <div id="kpi-stillbirth-detail" class="kpi-subtext" style="color: var(--color-text-muted);">0 deaths / 0 total</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Last 7 Days Operational Activity Summary -->
+                <section class="activity-banner" style="background:#fff; border:1px solid var(--color-border); border-radius:var(--radius-md); padding:16px; margin-bottom:24px; box-shadow:var(--shadow-sm);">
+                    <h2 style="font-size:1.1rem; font-weight:700; color:var(--color-primary); margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+                         Operational Activity Report (Last 7 Active Days)
+                    </h2>
+                    <div style="overflow-x:auto;">
+                        <table class="linelist-table" style="width:100%; border-collapse:collapse; font-size:0.8rem; background:#fff;">
+                            <thead>
+                                <tr style="background:var(--color-bg-sunken); text-align:left;">
+                                    <th style="padding:10px; border-bottom:2px solid var(--color-border); font-weight:700;">Date</th>
+                                    <th style="padding:10px; border-bottom:2px solid var(--color-border); color:var(--color-primary); font-weight:700;">Delivery Entries Done</th>
+                                    <th style="padding:10px; border-bottom:2px solid var(--color-border); color:var(--color-secondary); font-weight:700;">Follow-up Calls Completed</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activity-report-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Visual Charts Trend Section -->
+                <section class="charts-section" aria-label="Visual Analytics">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h2>Follow-up Status by Month</h2>
+                            <p>Aggregated trend of completed and remaining cases</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="monthlyTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h2>Data Quality Issues</h2>
+                            <p>Validation errors across blocks or coordinators</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="blockCompletionChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Full-width Monthly Mortality & Stillbirth Trends Chart -->
+                <section style="margin-top:24px;">
+                    <div class="chart-card" style="width:100%; min-height:400px;">
+                        <div class="chart-header">
+                            <h2>Monthly Mortality & Stillbirth Trends (NMR & SBR)</h2>
+                            <p>Monthly Neonatal Mortality Rate (NMR per 1000 Live Births), Stillbirth Rate (SBR per 1000 Births), and their 3-month moving averages</p>
+                        </div>
+                        <div class="chart-container" style="height:350px;">
+                            <canvas id="mortalityTrendChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Place of Delivery Distribution Chart -->
+                <section style="margin-top:24px;">
+                    <div class="chart-card" style="width:100%; min-height:400px;">
+                        <div class="chart-header">
+                            <h2>Place of Delivery Distribution</h2>
+                            <p>Monthly trends of where deliveries occurred (Public/Private Facilities, Home, On the Way, and Out-of-District)</p>
+                        </div>
+                        <div class="chart-container" style="height:350px;">
+                            <canvas id="placeOfDeliveryChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ================= TAB 2: OVERALL LINE LIST ================= -->
+            <div id="panel-overall" class="tab-panel">
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Overall Delivery Records</h2>
+                            <p>Full registry of births, tracking delivery status and outcomes (Click rows to expand details)</p>
+                        </div>
+                        <div class="list-controls">
+                            <!-- Toggle to show only discrepancy cases -->
+                            <div class="filter-group" style="margin: 0; min-width: 180px; display: inline-flex; flex-direction: column;">
+                                <label for="filter-discrepancy-notif-reg" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight: 700; color: var(--color-text-muted);">NOTIFICATION & REGISTRATION VALIDATION FILTER</label>
+                                <select id="filter-discrepancy-notif-reg" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                    <option value="ALL">All Records</option>
+                                    <option value="ANY">Any Form 1 Error</option>
+                                    <option value="NONE">No Form 1 Error</option>
+                                    <option value="1.1">1.1 Delivery Date Missing</option>
+                                    <option value="1.2">1.2 Block Name Missing</option>
+                                    <option value="1.3">1.3 Gestational Age Missing</option>
+                                    <option value="1.4">1.4 Gestational Age Mismatch</option>
+                                    <option value="1.5">1.5 Delivery Type Missing</option>
+                                    <option value="1.6">1.6 Delivery Location Missing</option>
+                                    <option value="1.7">1.7 Number of Babies Delivered Missing</option>
+                                    <option value="1.8">1.8 Baby Not Registered after Notification</option>
+                                    <option value="1.9">1.9 Status of the baby at birth mismatched</option>
+                                    <option value="1.10">1.10 Stillbirth with GA < 28 wks or Weight < 1000g</option>
+                                    <option value="1.11">1.11 Baby Gender Missing</option>
+                                    <option value="1.12">1.12 Birth Weight Missing / 9999</option>
+                                    <option value="1.13">1.13 Gestational Age < 24 for Live Birth</option>
+                                    <option value="1.14">1.14 Intergrowth Chart GA vs BW Mismatch</option>
+                                    <option value="1.15">1.15 Mobile Number Issues</option>
+                                    <option value="1.16">1.16 Duplicate Entries</option>
+                                    <option value="1.17">1.17 Future Date Issues</option>
+                                </select>
+                            </div>
+                            <div class="filter-group" style="margin: 0; min-width: 180px; display: inline-flex; flex-direction: column; margin-left: 12px;">
+                                <label for="filter-discrepancy-day29" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight: 700; color: var(--color-text-muted);">DAY 29 FOLLOW-UP VALIDATION FILTER</label>
+                                <select id="filter-discrepancy-day29" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                    <option value="ALL">All Records</option>
+                                    <option value="ANY">Any Form 2 Error</option>
+                                    <option value="NONE">No Form 2 Error</option>
+                                    <option value="2.1">2.1 Status of Baby at Day 29 Follow-up Missing / Due</option>
+                                    <option value="2.2">2.2 Date of Death Missing</option>
+                                    <option value="2.3">2.3 Place of Death Missing</option>
+                                    <option value="2.4">2.4 Age at Death Invalid</option>
+                                    <option value="2.5">2.5 Factors Associated with newborn deaths missing</option>
+                                    <option value="2.6">2.6 Follow-up Date Conflicts</option>
+                                    <option value="2.7">2.7 Death Timeline Issues</option>
+                                </select>
+                            </div>
+                            <div class="filter-group" style="margin: 0; min-width: 180px; display: inline-flex; flex-direction: column; margin-left: 12px;">
+                                <label for="filter-deliv-loc" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight: 700; color: var(--color-text-muted);">DELIVERY LOCATION FILTER</label>
+                                <select id="filter-deliv-loc" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                    <option value="ALL">All Locations</option>
+                                    <option value="Public Facility (In-District)">Public Facility (In-District)</option>
+                                    <option value="Private Facility (In-District)">Private Facility (In-District)</option>
+                                    <option value="Home (In-District)">Home (In-District)</option>
+                                    <option value="On the Way">On the Way</option>
+                                    <option value="Out of District">Out of District</option>
+                                    <option value="Other/Unspecified">Other/Unspecified</option>
+                                </select>
+                            </div>
+                            <span id="overall-count-badge" class="list-count-badge">0 records</span>
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-overall" type="search" class="search-input" placeholder="Search mother name, ID, phone...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('overall')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('overall')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="overall-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">Record ID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_date">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_loc">Delivery Location <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_place">Delivery Place Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="phone1">Family Mobile <span class="sort-indicator"></span></th>
+                                    <th>Baby 1 Final Status</th>
+                                    <th>Baby 2 Final Status</th>
+                                    <th>Baby 3 Final Status</th>
+                                    <th class="sortable" data-sort="has_disc">Issues <span class="sort-indicator"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="overall-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="overall-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-overall" class="load-more-btn">Load More Records</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 3: PENDING FOLLOW UP LINE LIST ================= -->
+            <div id="panel-pending" class="tab-panel">
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Remaining 28-day Follow-up Calls</h2>
+                            <p>Live list of mothers requiring newborn tracking calls with address & ASHA contacts</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="pending-count-badge" class="list-count-badge">0 pending</span>
+                            <div class="filter-group-inline" style="margin-right: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                <label for="filter-pending-type" style="font-size: 0.65rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase;">Follow-up Type</label>
+                                <select id="filter-pending-type" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; min-width: 250px;">
+                                    <option value="ALL">All Pending (Age >= 29 Days)</option>
+                                    <option value="D29">29th Day Follow-up (Age 29 Days)</option>
+                                    <option value="OVERDUE">Previous Pending Follow-ups (Age >= 30 Days)</option>
+                                </select>
+                            </div>
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-pending" type="search" class="search-input" placeholder="Search name, phone, village...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('pending')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('pending')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="pending-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">Record ID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="coord">Entered By <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="village">Address Details (Village, GP) <span class="sort-indicator"></span></th>
+                                    <th>ASHA & Subcentre Contacts</th>
+                                    <th>Calls (Pill Buttons)</th>
+                                    <th>Final Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pending-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="pending-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-pending" class="load-more-btn">Load More Pending</button>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ================= TAB: LOST TO FOLLOW-UP LINE LIST ================= -->
+            <div id="panel-lost-followup" class="tab-panel">
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Lost to Follow-up Cases</h2>
+                            <p>Line list of mothers and newborns where 28-day follow-up could not be completed due to invalid numbers, switch off, or migration</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="lost-followup-count-badge" class="list-count-badge">0 cases</span>
+                            <div class="filter-group-inline" style="margin-right: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                <label for="filter-lost-category" style="font-size: 0.65rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase;">Lost Reason</label>
+                                <select id="filter-lost-category" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; min-width: 200px;">
+                                    <option value="ALL">All Reasons</option>
+                                    <option value="Wrong Number">Wrong Number (गलत नंबर)</option>
+                                    <option value="Switched Off">Switched Off (स्विच ऑफ)</option>
+                                    <option value="Not Responding">Not Responding (कॉल नहीं उठाया)</option>
+                                    <option value="Contact Not Available">Contact Not Available (संपर्क उपलब्ध नहीं)</option>
+                                    <option value="Out of District / Migrated">Out of District / Migrated (पलायन)</option>
+                                    <option value="Other Reason">Other Reason (अन्य कारण)</option>
+                                </select>
+                            </div>
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-lost-followup" type="search" class="search-input" placeholder="Search name, phone, village, reason...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('lost-followup')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('lost-followup')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="lost-followup-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">Record ID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date & Age <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="followup_coord">Follow-up Coordinator <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="village">Address Details (Village, Subcentre) <span class="sort-indicator"></span></th>
+                                    <th>ANM & CHO Contacts</th>
+                                    <th>Family Mobile No.</th>
+                                    <th>Loss Category & Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lost-followup-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="lost-followup-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-lost-followup" class="load-more-btn">Load More Lost Cases</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 4: NEONATAL DEATHS LINE LIST ================= -->
+            <div id="panel-deaths" class="tab-panel">
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Neonatal Death Registry (<= 28 Days)</h2>
+                            <p>List of live-born babies who died during the neonatal follow-up window</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="deaths-count-badge" class="list-count-badge">0 deaths</span>
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-deaths" type="search" class="search-input" placeholder="Search mother name, baby ID...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('deaths')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('deaths')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Neonatal Deaths Sub-Filters -->
+                    <div class="tab-filters-row" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; background:#f8fafc; padding:12px; border-radius:var(--radius-sm); border: 1px solid var(--color-border); align-items:center;">
+                        <div class="filter-group" style="margin: 0; min-width: 140px; display: flex; flex-direction: column;">
+                            <label for="filter-death-baby-num" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY BABY NUMBER</label>
+                            <select id="filter-death-baby-num" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Babies</option>
+                                <option value="Baby 1">Baby 1</option>
+                                <option value="Baby 2">Baby 2</option>
+                                <option value="Baby 3">Baby 3</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="margin: 0; min-width: 180px; display: flex; flex-direction: column;">
+                            <label for="filter-death-place" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY PLACE OF DEATH</label>
+                            <select id="filter-death-place" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Places of Death</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="margin: 0; min-width: 200px; display: flex; flex-direction: column;">
+                            <label for="filter-death-deliv-place" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY PLACE OF DELIVERY (COL BY)</label>
+                            <select id="filter-death-deliv-place" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Places of Delivery</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="deaths-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">Record ID <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="name">Mother Name <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="baby_num">Baby <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="sex">Sex <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="weight">Birth Weight <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="death_date">Death Date <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="age_at_death">Age at Death <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="place_of_death">Place of Death <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="phone1">Phone <span class="sort-indicator">↕</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="deaths-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="deaths-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-deaths" class="load-more-btn">Load More Deaths</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 5: STILLBIRTH LINE LIST ================= -->
+            <div id="panel-stillbirths" class="tab-panel">
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Stillbirth / IUD Registry</h2>
+                            <p>List of stillborn cases (Intrauterine Deaths) reported at registration</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="stillbirths-count-badge" class="list-count-badge">0 stillbirths</span>
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-stillbirths" type="search" class="search-input" placeholder="Search mother name, baby ID...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('stillbirths')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('stillbirths')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stillbirths Sub-Filters -->
+                    <div class="tab-filters-row" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; background:#f8fafc; padding:12px; border-radius:var(--radius-sm); border: 1px solid var(--color-border); align-items:center;">
+                        <div class="filter-group" style="margin: 0; min-width: 180px; display: flex; flex-direction: column;">
+                            <label for="filter-stillbirth-loc" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY DELIVERY LOCATION</label>
+                            <select id="filter-stillbirth-loc" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Locations</option>
+                                <option value="Home">Home</option>
+                                <option value="Public health facility">Public health facility</option>
+                                <option value="Private health facility">Private health facility</option>
+                                <option value="On the way">On the way</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="margin: 0; min-width: 140px; display: flex; flex-direction: column;">
+                            <label for="filter-stillbirth-baby-num" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY BABY NUMBER</label>
+                            <select id="filter-stillbirth-baby-num" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Babies</option>
+                                <option value="Baby 1">Baby 1</option>
+                                <option value="Baby 2">Baby 2</option>
+                                <option value="Baby 3">Baby 3</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="margin: 0; min-width: 180px; display: flex; flex-direction: column;">
+                            <label for="filter-stillbirth-place" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY PLACE NAME</label>
+                            <select id="filter-stillbirth-place" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Places</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="stillbirths-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">Record ID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="baby_num">Baby <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="sex">Sex <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="weight">Birth Weight <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_loc">Delivery Location <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_place">Delivery Place Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="phone1">Phone <span class="sort-indicator"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="stillbirths-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="stillbirths-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-stillbirths" class="load-more-btn">Load More Stillbirths</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 6: OUT OF RANGE DEATHS LINE LIST ================= -->
+            <div id="panel-out-range-deaths" class="tab-panel">
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Out-of-Range Deaths Registry (&lt; 0 days or &gt; 28 days)</h2>
+                            <p>Verification list for babies with anomalous ages at death (potential date entry issues)</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="out-range-deaths-count-badge" class="list-count-badge">0 out-of-range</span>
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-out-range-deaths" type="search" class="search-input" placeholder="Search mother name, baby ID...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('out_range_deaths')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('out_range_deaths')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="out-range-deaths-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">Record ID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="baby_num">Baby <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="sex">Sex <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="weight">Birth Weight <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="death_date">Death Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="age_at_death">Age at Death <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_place">Place of Delivery <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="place_of_death">Place of Death <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="phone1">Phone <span class="sort-indicator"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="out-range-deaths-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="out-range-deaths-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-out-range-deaths" class="load-more-btn">Load More Out-of-Range</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 7: HOME DELIVERIES LINE LIST ================= -->
+            <div id="panel-home-deliveries" class="tab-panel">
+                <!-- Anmol Home Deliveries Summary Cards (Interactive 1-Click Filters) -->
+                <section class="anmol-summary-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; margin-top: 8px;">
+                    <div class="kpi-card home-kpi-filter-card active-kpi-card" data-home-filter="ALL" style="background:#f1f5f9; border-left:4px solid #64748b; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter all home deliveries">
+                        <span class="kpi-title" style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Total Home Deliveries</span>
+                        <div id="anmol-home-total" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#334155;">0</div>
+                    </div>
+                    <div class="kpi-card home-kpi-filter-card" data-home-filter="exact" style="background:#ecfdf5; border-left:4px solid #10b981; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter accurately recorded cases">
+                        <span class="kpi-title" style="color:#047857; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Accurately recorded in REDCap</span>
+                        <div id="anmol-home-exact" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#047857;">0</div>
+                    </div>
+                    <div class="kpi-card home-kpi-filter-card" data-home-filter="spelling" style="background:#fffbeb; border-left:4px solid #f59e0b; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter spelling/data mismatches">
+                        <span class="kpi-title" style="color:#b45309; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Recorded with spelling mismatch</span>
+                        <div id="anmol-home-spelling" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#b45309;">0</div>
+                    </div>
+                    <div class="kpi-card home-kpi-filter-card" data-home-filter="unmatched" style="background:#fef2f2; border-left:4px solid #ef4444; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter unrecorded cases in REDCap">
+                        <span class="kpi-title" style="color:#b91c1c; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Not Recorded in REDCap</span>
+                        <div id="anmol-home-unmatched" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#b91c1c;">0</div>
+                    </div>
+                </section>
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Home Delivery Cases (Anmol Data)</h2>
+                            <p>Line list of mothers who delivered at home (Click rows to expand clinical details)</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="home-deliveries-count-badge" class="list-count-badge">0 cases</span>
+                            
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-home-deliveries" type="search" class="search-input" placeholder="Search mother name, MPID, block...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('home_deliveries')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('home_deliveries')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="home-deliveries-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">MPID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother details (W/o Husband, Age) <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="village">Village / GP <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="newborns">Newborn Status <span class="sort-indicator"></span></th>
+                                    <th>Mobile No</th>
+                                    <th>ASHA & Subcentre Contacts</th>
+                                </tr>
+                            </thead>
+                            <tbody id="home-deliveries-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="home-deliveries-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-home-deliveries" class="load-more-btn">Load More Home Deliveries</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 8: OUT OF DISTRICT LINE LIST ================= -->
+            <div id="panel-out-district-deliveries" class="tab-panel">
+                <!-- Anmol Out of District Summary Cards (Interactive 1-Click Filters) -->
+                <section class="anmol-summary-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; margin-top: 8px;">
+                    <div class="kpi-card out-kpi-filter-card active-kpi-card" data-out-filter="ALL" style="background:#f1f5f9; border-left:4px solid #64748b; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter all out-of-district deliveries">
+                        <span class="kpi-title" style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Total Out-of-District Deliveries</span>
+                        <div id="anmol-out-total" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#334155;">0</div>
+                    </div>
+                    <div class="kpi-card out-kpi-filter-card" data-out-filter="exact" style="background:#ecfdf5; border-left:4px solid #10b981; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter accurately recorded cases">
+                        <span class="kpi-title" style="color:#047857; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Accurately recorded in REDCap</span>
+                        <div id="anmol-out-exact" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#047857;">0</div>
+                    </div>
+                    <div class="kpi-card out-kpi-filter-card" data-out-filter="spelling" style="background:#fffbeb; border-left:4px solid #f59e0b; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter spelling/data mismatches">
+                        <span class="kpi-title" style="color:#b45309; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Recorded with spelling mismatch</span>
+                        <div id="anmol-out-spelling" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#b45309;">0</div>
+                    </div>
+                    <div class="kpi-card out-kpi-filter-card" data-out-filter="unmatched" style="background:#fef2f2; border-left:4px solid #ef4444; padding:12px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.2s ease;" title="Click to filter unrecorded cases in REDCap">
+                        <span class="kpi-title" style="color:#b91c1c; font-size:0.75rem; font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px;">Not Recorded in REDCap</span>
+                        <div id="anmol-out-unmatched" class="kpi-value" style="font-size:1.6rem; font-weight:800; color:#b91c1c;">0</div>
+                    </div>
+                </section>
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Out-of-District Deliveries (Anmol Data)</h2>
+                            <p>Line list of mothers who delivered outside Khargone district (Click rows to expand clinical details)</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="out-district-deliveries-count-badge" class="list-count-badge">0 cases</span>
+                            
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-out-district-deliveries" type="search" class="search-input" placeholder="Search name, MPID, facility...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('out_district_deliveries')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('out_district_deliveries')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Tables Container -->
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="out-district-deliveries-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">MPID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="name">Mother details (W/o Husband, Age) <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="village">Home Village / GP <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_date">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="delivery_district">Delivery Place <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="newborns">Newborn Status <span class="sort-indicator"></span></th>
+                                    <th>Mobile No</th>
+                                    <th>ASHA & Subcentre Contacts</th>
+                                </tr>
+                            </thead>
+                            <tbody id="out-district-deliveries-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card Stack Container -->
+                    <div id="out-district-deliveries-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-out-district-deliveries" class="load-more-btn">Load More Out-of-District</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB: SNCU DEATHS LINE LIST ================= -->
+            <div id="panel-sncu-deaths" class="tab-panel">
+                <!-- SNCU KPI Summary Cards (Interactive Filters) -->
+                <section class="kpis-grid" aria-label="SNCU Deaths Summary KPIs" style="margin-bottom: 20px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                    <!-- 1. Total SNCU Deaths -->
+                    <div class="kpi-card sncu-kpi-filter-card active-kpi-card" data-sncu-filter="ALL" style="border-left: 4px solid var(--color-danger); cursor: pointer; transition: all 0.2s ease;" title="Click to filter all SNCU deaths">
+                        <span class="kpi-title">Total SNCU Deaths</span>
+                        <div>
+                            <div id="card-sncu-total" class="kpi-value">0</div>
+                            <div class="kpi-subtext" style="color: var(--color-danger);"><=28 Days Mortality</div>
+                        </div>
+                    </div>
+                    <!-- 2. Total deaths recorded in DH khargone in REDCap -->
+                    <div class="kpi-card sncu-kpi-filter-card" data-sncu-filter="dh_khargone" style="border-left: 4px solid #8b5cf6; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases matched with DH Khargone deaths in REDCap">
+                        <span class="kpi-title">Total deaths recorded in DH khargone in redcap</span>
+                        <div>
+                            <div id="card-sncu-dh-khargone" class="kpi-value" style="color: #8b5cf6;">0</div>
+                            <div class="kpi-subtext" style="color: #7c3aed;">REDCap DH Khargone Deaths</div>
+                        </div>
+                    </div>
+                    <!-- 2. Accurately Recorded -->
+                    <div class="kpi-card sncu-kpi-filter-card" data-sncu-filter="accurate" style="border-left: 4px solid #10b981; cursor: pointer; transition: all 0.2s ease;" title="Click to filter accurately recorded cases (>=6 criteria matched)">
+                        <span class="kpi-title">Accurately Recorded</span>
+                        <div>
+                            <div id="card-sncu-accurate" class="kpi-value" style="color: #10b981;">0</div>
+                            <div class="kpi-subtext" style="color: #047857;">&gt;=6 Criteria Matched</div>
+                        </div>
+                    </div>
+                    <!-- 3. Recorded with spelling mismatch -->
+                    <div class="kpi-card sncu-kpi-filter-card" data-sncu-filter="spelling" style="border-left: 4px solid #f59e0b; cursor: pointer; transition: all 0.2s ease;" title="Click to filter spelling/data mismatch (<6 criteria matched)">
+                        <span class="kpi-title">Recorded with spelling mismatch</span>
+                        <div>
+                            <div id="card-sncu-spelling" class="kpi-value" style="color: #f59e0b;">0</div>
+                            <div class="kpi-subtext" style="color: #b45309;">&lt;6 Criteria Matched</div>
+                        </div>
+                    </div>
+                    <!-- 4. Recorded as healthy in REDCap -->
+                    <div class="kpi-card sncu-kpi-filter-card" data-sncu-filter="healthy" style="border-left: 4px solid #0284c7; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases recorded as healthy in REDCap">
+                        <span class="kpi-title">Recorded as healthy in REDCap</span>
+                        <div>
+                            <div id="card-sncu-rec-healthy" class="kpi-value" style="color: #0284c7;">0</div>
+                            <div class="kpi-subtext" style="color: #0369a1;">Status: Healthy in REDCap</div>
+                        </div>
+                    </div>
+                    <!-- 5. Pending for Follow-up -->
+                    <div class="kpi-card sncu-kpi-filter-card" data-sncu-filter="pending" style="border-left: 4px solid #ea580c; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases pending follow-up in REDCap">
+                        <span class="kpi-title">Pending for Follow-up</span>
+                        <div>
+                            <div id="card-sncu-rec-pending" class="kpi-value" style="color: #ea580c;">0</div>
+                            <div class="kpi-subtext" style="color: #9a3412;">Action: Telecaller Follow-up</div>
+                        </div>
+                    </div>
+                    <!-- 6. Not Recorded in REDCap -->
+                    <div class="kpi-card sncu-kpi-filter-card" data-sncu-filter="unmatched" style="border-left: 4px solid #64748b; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases missing from REDCap repository">
+                        <span class="kpi-title">Not Recorded in REDCap</span>
+                        <div>
+                            <div id="card-sncu-not-in-redcap" class="kpi-value" style="color: #64748b;">0</div>
+                            <div class="kpi-subtext" style="color: #475569;">Unmatched in Delivery Records</div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Khargone SNCU Neonatal Deaths Line List (<= 28 Days)</h2>
+                            <p>SNCU DH Khargone neonatal death cases cross-matched with REDCap followup repository</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="sncu-count-badge" class="list-count-badge">0 deaths</span>
+                            
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-sncu" type="search" class="search-input" placeholder="Search mother, father, phone, block, cause...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('sncu')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('sncu')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="sncu-deaths-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="adm_id">Admission ID <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="mother_name">Mother Name <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="sex">Sex <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="weight">Birth Weight <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="dob">Delivery Date <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="death_date">Death Date <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="age_at_death">Age at Death <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="deliv_place">Place of Delivery <span class="sort-indicator">↕</span></th>
+                                    <th class="sortable" data-sort="contact">Phone <span class="sort-indicator">↕</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="sncu-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="sncu-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-sncu" class="load-more-btn">Load More SNCU Deaths</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 9: KHANDWA SNCU DEATHS ================= -->
+            <div id="panel-khandwa-sncu-deaths" class="tab-panel">
+                <!-- Khandwa SNCU KPI Summary Cards (Interactive Filters) -->
+                <section class="kpis-grid" aria-label="Khandwa SNCU Deaths Summary KPIs" style="margin-bottom: 20px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                    <!-- 1. Total SNCU Deaths -->
+                    <div class="kpi-card khandwa-kpi-filter-card active-kpi-card" data-khandwa-filter="ALL" style="border-left: 4px solid var(--color-danger); cursor: pointer; transition: all 0.2s ease;" title="Click to filter all Khandwa SNCU deaths">
+                        <span class="kpi-title">Total SNCU Deaths</span>
+                        <div>
+                            <div id="card-khandwa-total" class="kpi-value">0</div>
+                            <div class="kpi-subtext" style="color: var(--color-danger);"><=28 Days Mortality</div>
+                        </div>
+                    </div>
+                    <!-- 2. Accurately Recorded -->
+                    <div class="kpi-card khandwa-kpi-filter-card" data-khandwa-filter="accurate" style="border-left: 4px solid #10b981; cursor: pointer; transition: all 0.2s ease;" title="Click to filter accurately recorded cases (>=6 criteria matched)">
+                        <span class="kpi-title">Accurately Recorded</span>
+                        <div>
+                            <div id="card-khandwa-accurate" class="kpi-value" style="color: #10b981;">0</div>
+                            <div class="kpi-subtext" style="color: #047857;">&gt;=6 Criteria Matched</div>
+                        </div>
+                    </div>
+                    <!-- 3. Recorded with spelling mismatch -->
+                    <div class="kpi-card khandwa-kpi-filter-card" data-khandwa-filter="spelling" style="border-left: 4px solid #f59e0b; cursor: pointer; transition: all 0.2s ease;" title="Click to filter spelling/data mismatch (<6 criteria matched)">
+                        <span class="kpi-title">Recorded with spelling mismatch</span>
+                        <div>
+                            <div id="card-khandwa-spelling" class="kpi-value" style="color: #f59e0b;">0</div>
+                            <div class="kpi-subtext" style="color: #b45309;">&lt;6 Criteria Matched</div>
+                        </div>
+                    </div>
+                    <!-- 4. Recorded as healthy in REDCap -->
+                    <div class="kpi-card khandwa-kpi-filter-card" data-khandwa-filter="healthy" style="border-left: 4px solid #0284c7; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases recorded as healthy in REDCap">
+                        <span class="kpi-title">Recorded as healthy in REDCap</span>
+                        <div>
+                            <div id="card-khandwa-rec-healthy" class="kpi-value" style="color: #0284c7;">0</div>
+                            <div class="kpi-subtext" style="color: #0369a1;">Status: Healthy in REDCap</div>
+                        </div>
+                    </div>
+                    <!-- 5. Pending for Follow-up -->
+                    <div class="kpi-card khandwa-kpi-filter-card" data-khandwa-filter="pending" style="border-left: 4px solid #ea580c; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases pending follow-up in REDCap">
+                        <span class="kpi-title">Pending for Follow-up</span>
+                        <div>
+                            <div id="card-khandwa-rec-pending" class="kpi-value" style="color: #ea580c;">0</div>
+                            <div class="kpi-subtext" style="color: #9a3412;">Action: Telecaller Follow-up</div>
+                        </div>
+                    </div>
+                    <!-- 6. Not Recorded in REDCap -->
+                    <div class="kpi-card khandwa-kpi-filter-card" data-khandwa-filter="unmatched" style="border-left: 4px solid #64748b; cursor: pointer; transition: all 0.2s ease;" title="Click to filter cases missing from REDCap repository">
+                        <span class="kpi-title">Not Recorded in REDCap</span>
+                        <div>
+                            <div id="card-khandwa-not-in-redcap" class="kpi-value" style="color: #64748b;">0</div>
+                            <div class="kpi-subtext" style="color: #475569;">Unmatched in Delivery Records</div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="line-list-wrapper">
+                    <div class="list-header-row">
+                        <div class="list-title-wrap">
+                            <h2>Khandwa SNCU Neonatal Deaths Line List (<= 28 Days)</h2>
+                            <p>SNCU DH Khandwa neonatal death cases cross-matched with REDCap followup repository</p>
+                        </div>
+                        <div class="list-controls">
+                            <span id="khandwa-sncu-count-badge" class="list-count-badge">0 deaths</span>
+                            
+                            <div class="search-bar-wrap">
+                                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                                </svg>
+                                <input id="search-khandwa-sncu" type="search" class="search-input" placeholder="Search mother, father, phone, block, cause...">
+                            </div>
+                            <div class="export-btn-group" style="display: flex; gap: 8px; align-items: center; margin-left: 12px; margin-right: 4px;">
+                                <button onclick="exportToCSV('khandwa_sncu')" class="export-btn" title="Export filtered list to Excel CSV" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export
+                                </button>
+                                <button onclick="copyToClipboard('khandwa_sncu')" class="export-btn" title="Copy filtered list to clipboard" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #fff; background: var(--color-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s ease;">
+                                    <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Khandwa Sub-Filters -->
+                    <div class="tab-filters-row" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; background:#f8fafc; padding:12px; border-radius:var(--radius-sm); border: 1px solid var(--color-border); align-items:center;">
+                        <div class="filter-group" style="margin: 0; min-width: 220px; display: flex; flex-direction: column;">
+                            <label for="filter-khandwa-deliv-place" class="filter-label" style="font-size: 0.65rem; margin-bottom: 2px; font-weight:700; color: var(--color-text-muted);">FILTER BY PLACE OF DELIVERY</label>
+                            <select id="filter-khandwa-deliv-place" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;">
+                                <option value="ALL">All Places of Delivery</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive-container">
+                        <table class="dashboard-table" id="khandwa-sncu-deaths-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="adm_id">Admission ID <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="block">Block <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="mother_name">Mother Name <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="sex">Sex <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="weight">Birth Weight <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="dob">Delivery Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="death_date">Death Date <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="age_at_death">Age at Death <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="deliv_place">Place of Delivery <span class="sort-indicator"></span></th>
+                                    <th class="sortable" data-sort="contact">Phone <span class="sort-indicator"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="khandwa-sncu-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="khandwa-sncu-cards-container" class="cards-list-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="load-more-wrap">
+                        <button id="load-more-khandwa-sncu" class="load-more-btn">Load More Khandwa SNCU Deaths</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Main Logic Script Reference (Bundled inline by script) -->
+    <script src="dashboard_data.js"></script>
+    <script src="templates/index.js"></script>
+</body>
+</html>

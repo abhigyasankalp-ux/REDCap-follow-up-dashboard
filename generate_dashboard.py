@@ -1115,12 +1115,23 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
             print(f"  [INFO] Updating remote origin to: {repo_url}")
             subprocess.run(['git', 'remote', 'set-url', 'origin', repo_url], check=True, capture_output=True)
 
+        # 1. Pull latest remote changes first to prevent non-fast-forward push errors
+        print("  [INFO] Synchronizing with remote repository...")
+        try:
+            subprocess.run(['git', 'fetch', 'origin', 'main'], capture_output=True, text=True, timeout=30)
+            pull_res = subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=30)
+            if pull_res.returncode != 0:
+                subprocess.run(['git', 'rebase', '--abort'], capture_output=True, text=True)
+        except Exception as e_pull:
+            print(f"  [NOTICE] Remote fetch info: {e_pull}")
+
+        # 2. Stage allowed files (honoring .gitignore to protect raw patient data)
         print("  [INFO] Staging dashboard and application files (honoring .gitignore)...")
         subprocess.run(['git', 'add', '-A'], check=True, capture_output=True)
         
         status_proc = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
         if not status_proc.stdout.strip():
-            print("  [INFO] No changes detected since last commit. Working tree is clean.")
+            print("  [INFO] No changes detected in dashboard build. Working tree is clean.")
         else:
             commit_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             commit_msg = f"Dashboard auto-update: {commit_time}"
@@ -1128,10 +1139,13 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
             subprocess.run(['git', 'commit', '-m', commit_msg], check=True, capture_output=True)
             
         print("  [INFO] Pushing latest changes to GitHub repository...")
-        push_proc = subprocess.run(['git', 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=60)
+        push_proc = subprocess.run(['git', 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
         
         if push_proc.returncode == 0:
+            commit_hash = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
             print(f"  [SUCCESS] Successfully pushed latest dashboard to: {repo_url}")
+            print(f"  [COMMIT] Commit SHA: {commit_hash}")
+            print("  [NOTICE] If viewing on GitHub Pages, allow 1-2 minutes for deployment, or hard-refresh (Ctrl+F5).")
             return True
         else:
             err_msg = push_proc.stderr.strip() or push_proc.stdout.strip()
@@ -3692,7 +3706,7 @@ def main():
                 'home': home_stats,
                 'out_district': out_stats
             },
-            'last_updated': datetime.now().strftime("%d-%m-%Y")
+            'last_updated': datetime.now().strftime("%d-%m-%Y %H:%M")
         },
         'activity_report': activity_report,
         'overall_list': overall_list,
@@ -3742,14 +3756,17 @@ def main():
     with open(html_file, 'r', encoding='utf-8') as f:
         html_content = f.read()
 
-    # Link stylesheets and scripts with clean relative paths for GitHub Pages and local double-click
-    html_content = html_content.replace('<link rel="stylesheet" href="index.css">', '<link rel="stylesheet" href="templates/index.css">')
+    # Generate cache-busting timestamp to prevent stale browser & GitHub Pages caching
+    cache_buster = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    # Link stylesheets and scripts with clean relative paths and version query strings
+    html_content = html_content.replace('<link rel="stylesheet" href="index.css">', f'<link rel="stylesheet" href="templates/index.css?v={cache_buster}">')
     if '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>' in html_content:
         html_content = html_content.replace('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>', '<script src="templates/chart.min.js"></script>')
     elif '<script src="chart.min.js"></script>' in html_content:
         html_content = html_content.replace('<script src="chart.min.js"></script>', '<script src="templates/chart.min.js"></script>')
 
-    data_script_tags = '<script src="dashboard_data.js"></script>\n    <script src="templates/index.js"></script>'
+    data_script_tags = f'<script src="dashboard_data.js?v={cache_buster}"></script>\n    <script src="templates/index.js?v={cache_buster}"></script>'
     html_content = html_content.replace('<script src="index.js"></script>', data_script_tags)
 
     output_filename = 'index.html'

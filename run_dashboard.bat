@@ -98,7 +98,9 @@ start "" "index.html"
 
 echo.
 echo =====================================================================
-echo [DONE] Dashboard generation completed successfully!
-echo Check the logs above. Press any key to close this window...
+echo [DONE] Dashboard generation & GitHub upload complete!
+echo Notice: If viewing on GitHub Pages, allow 1-2 minutes for deployment.
+echo Live link: https://abhigyasankalp-ux.github.io/REDCap-follow-up-dashboard/
+echo Press any key to close this window...
 echo =====================================================================
 pause >nul

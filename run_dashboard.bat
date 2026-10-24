@@ -73,6 +73,15 @@ if %errorlevel% neq 0 (
     )
 )
 
+:: 3. Check Git availability for GitHub sync
+where git >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [NOTICE] Git is not installed on this PC.
+    echo Dashboard will generate locally, but will not upload to GitHub.
+    echo Run "setup_github_sync.bat" if you wish to configure GitHub upload.
+    echo.
+)
+
 echo.
 echo Step 1: Rebuilding dashboard with the latest datasheets...
 echo.
@@ -98,9 +107,17 @@ start "" "index.html"
 
 echo.
 echo =====================================================================
-echo [DONE] Dashboard generation & GitHub upload complete!
-echo Notice: If viewing on GitHub Pages, allow 1-2 minutes for deployment.
-echo Live link: https://abhigyasankalp-ux.github.io/REDCap-follow-up-dashboard/
+%PY_CMD% -c "import json, os; s=json.load(open('.github_sync_status.json')) if os.path.exists('.github_sync_status.json') else {}; exit(0 if s.get('success') else 1)" >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [DONE] Dashboard generation & GitHub upload complete!
+    echo Notice: If viewing on GitHub Pages, allow 1-2 minutes for deployment.
+    echo Live link: https://abhigyasankalp-ux.github.io/REDCap-follow-up-dashboard/
+) else (
+    echo [NOTICE] Dashboard was generated locally, but GitHub upload did NOT succeed!
+    echo If this is Abhigya's computer, please run:
+    echo   -> setup_github_sync.bat
+    echo to configure Git and your GitHub credentials or access token.
+)
 echo Press any key to close this window...
 echo =====================================================================
 pause >nul

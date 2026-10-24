@@ -35,8 +35,15 @@ __pycache__/
 *.log
 /scratch/
 .system_generated/
+.github_sync_status.json
 
-# 6. IDE & Environment Configurations
+# 6. Credentials & Authentication Tokens (NEVER commit secrets)
+github_token.txt
+*.token
+.env
+.env.*
+
+# 7. IDE & Environment Configurations
 .vscode/
 .idea/
 .venv/

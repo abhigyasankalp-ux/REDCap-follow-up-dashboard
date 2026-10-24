@@ -1088,40 +1088,93 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
     """
     Automated Git Commit and Push to remote repository.
     Strictly honors .gitignore to ensure NO raw patient/REDCap/Anmol/SNCU data is committed or exposed.
+    Works reliably across different systems (including Abhigya's computer).
     """
     import subprocess
     import shutil
+    import json
     
     print("\n" + "=" * 65)
     print("      AUTOMATED GITHUB REPOSITORY SYNC & UPLOAD")
     print("=" * 65)
     
+    status_file = '.github_sync_status.json'
+    
+    def record_sync_status(success, message, commit=''):
+        try:
+            with open(status_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'timestamp': datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                    'success': success,
+                    'message': message,
+                    'commit': commit
+                }, f, indent=2)
+        except Exception:
+            pass
+
     git_bin = shutil.which('git')
     if not git_bin:
-        print("  [NOTICE] Git is not installed or not in system PATH.")
-        print("  Skipping automatic GitHub upload.")
+        msg = (
+            "Git is not installed or not in system PATH on this computer.\n"
+            "  -> To enable automatic uploads to GitHub, install Git for Windows:\n"
+            "     https://git-scm.com/download/win\n"
+            "  -> Then run 'setup_github_sync.bat' to connect."
+        )
+        print(f"  [NOTICE] {msg}")
+        record_sync_status(False, "Git is not installed on this system")
         return False
         
     try:
+        # Check for personal access token in github_token.txt or environment
+        auth_repo_url = repo_url
+        token = None
+        if os.path.exists('github_token.txt'):
+            try:
+                with open('github_token.txt', 'r', encoding='utf-8') as tf:
+                    t_str = tf.read().strip()
+                    if t_str:
+                        token = t_str
+            except Exception:
+                pass
+        if not token and os.environ.get('GITHUB_TOKEN'):
+            token = os.environ.get('GITHUB_TOKEN').strip()
+            
+        if token and '@github.com' not in repo_url:
+            auth_repo_url = repo_url.replace('https://', f'https://oauth2:{token}@')
+            print("  [INFO] Using Personal Access Token from 'github_token.txt'.")
+
+        # Ensure repository is initialized
         if not os.path.exists('.git'):
             print("  [INFO] Initializing new Git repository on 'main' branch...")
             subprocess.run(['git', 'init', '-b', 'main'], check=True, capture_output=True)
             
+        # Ensure user identity is configured so 'git commit' never throws fatal errors on new systems
+        u_name = subprocess.run(['git', 'config', 'user.name'], capture_output=True, text=True).stdout.strip()
+        u_email = subprocess.run(['git', 'config', 'user.email'], capture_output=True, text=True).stdout.strip()
+        if not u_name:
+            subprocess.run(['git', 'config', 'user.name', 'Abhigya Sankalp'], capture_output=True)
+            print("  [INFO] Configured local Git user.name: 'Abhigya Sankalp'")
+        if not u_email:
+            subprocess.run(['git', 'config', 'user.email', 'abhigyasankalp.ux@gmail.com'], capture_output=True)
+            print("  [INFO] Configured local Git user.email: 'abhigyasankalp.ux@gmail.com'")
+
         remotes_out = subprocess.run(['git', 'remote', '-v'], capture_output=True, text=True).stdout
+        target_remote_url = auth_repo_url if token else repo_url
         if 'origin' not in remotes_out:
             print(f"  [INFO] Adding remote origin: {repo_url}")
-            subprocess.run(['git', 'remote', 'add', 'origin', repo_url], check=True, capture_output=True)
-        elif repo_url not in remotes_out:
-            print(f"  [INFO] Updating remote origin to: {repo_url}")
-            subprocess.run(['git', 'remote', 'set-url', 'origin', repo_url], check=True, capture_output=True)
+            subprocess.run(['git', 'remote', 'add', 'origin', target_remote_url], check=True, capture_output=True)
+        else:
+            subprocess.run(['git', 'remote', 'set-url', 'origin', target_remote_url], check=True, capture_output=True)
 
-        # 1. Pull latest remote changes first to prevent non-fast-forward push errors
+        # 1. Fetch remote main
         print("  [INFO] Synchronizing with remote repository...")
         try:
-            subprocess.run(['git', 'fetch', 'origin', 'main'], capture_output=True, text=True, timeout=30)
-            pull_res = subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=30)
+            subprocess.run(['git', 'fetch', 'origin', 'main'], capture_output=True, text=True, timeout=45)
+            pull_res = subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=45)
             if pull_res.returncode != 0:
                 subprocess.run(['git', 'rebase', '--abort'], capture_output=True, text=True)
+                # If freshly initialized repo with unrelated histories:
+                subprocess.run(['git', 'pull', 'origin', 'main', '--allow-unrelated-histories', '--no-edit', '-X', 'theirs'], capture_output=True, text=True, timeout=45)
         except Exception as e_pull:
             print(f"  [NOTICE] Remote fetch info: {e_pull}")
 
@@ -1136,29 +1189,52 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
             commit_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             commit_msg = f"Dashboard auto-update: {commit_time}"
             print(f"  [INFO] Committing changes: '{commit_msg}'")
-            subprocess.run(['git', 'commit', '-m', commit_msg], check=True, capture_output=True)
+            c_proc = subprocess.run(['git', 'commit', '-m', commit_msg], capture_output=True, text=True)
+            if c_proc.returncode != 0:
+                print(f"  [WARNING] Commit notice: {c_proc.stderr.strip()}")
             
         print("  [INFO] Pushing latest changes to GitHub repository...")
         push_proc = subprocess.run(['git', 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
         
+        # If push failed because remote moved ahead, retry with rebase
+        if push_proc.returncode != 0 and 'non-fast-forward' in (push_proc.stderr + push_proc.stdout):
+            print("  [INFO] Retrying push with rebase synchronization...")
+            subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=45)
+            push_proc = subprocess.run(['git', 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
+
         if push_proc.returncode == 0:
             commit_hash = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
             print(f"  [SUCCESS] Successfully pushed latest dashboard to: {repo_url}")
             print(f"  [COMMIT] Commit SHA: {commit_hash}")
             print("  [NOTICE] If viewing on GitHub Pages, allow 1-2 minutes for deployment, or hard-refresh (Ctrl+F5).")
+            record_sync_status(True, "Successfully pushed to GitHub", commit_hash)
             return True
         else:
             err_msg = push_proc.stderr.strip() or push_proc.stdout.strip()
-            print(f"  [WARNING] Git push notice:\n{err_msg}")
-            print("  Tip: Ensure your GitHub credentials / SSH keys are configured for this remote.")
+            print("\n  " + "!" * 60)
+            print("  [WARNING] GITHUB UPLOAD FAILED ON THIS COMPUTER")
+            print("  " + "!" * 60)
+            print(f"  Error Details:\n  {err_msg}\n")
+            print("  How to fix this on Abhigya's computer:")
+            print("    1. Close this window and double-click 'setup_github_sync.bat' in the project folder.")
+            print("    2. Or create a GitHub Personal Access Token (classic, repo scope) at:")
+            print("       https://github.com/settings/tokens")
+            print("       and save it inside a file named 'github_token.txt' in this project folder.")
+            print("  " + "!" * 60 + "\n")
+            record_sync_status(False, err_msg)
             return False
             
     except subprocess.TimeoutExpired:
-        print("  [WARNING] Git push timed out (waiting for network or credentials).")
+        msg = "Git push timed out (waiting for network or credentials prompt)."
+        print(f"  [WARNING] {msg}")
+        record_sync_status(False, msg)
         return False
     except Exception as e:
-        print(f"  [WARNING] Auto upload to GitHub skipped: {e}")
+        msg = f"Auto upload to GitHub skipped: {e}"
+        print(f"  [WARNING] {msg}")
+        record_sync_status(False, str(e))
         return False
+
 
 def main():
     # Ensure current working directory is always the script directory

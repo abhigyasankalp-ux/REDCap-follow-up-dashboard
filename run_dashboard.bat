@@ -86,7 +86,7 @@ echo.
 echo Step 1: Rebuilding dashboard with the latest datasheets...
 echo.
 
-%PY_CMD% generate_dashboard.py
+%PY_CMD% generate_dashboard.py %*
 
 if %errorlevel% neq 0 (
     echo.

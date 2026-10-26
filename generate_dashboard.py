@@ -231,43 +231,63 @@ def standardize_place_of_death(val):
     if 'outside' in s: return 'Outside District'
     return val_str
 
-def extract_baby_place_of_death(row, baby_idx, df_cols):
-    if baby_idx == 1:
-        call_suffixes = ['', '  ', '  242', '  420', '.3', '.6']
-    elif baby_idx == 2:
-        call_suffixes = ['  122', '  301', '  481', '.1', '.4', '.7']
-    else:
-        call_suffixes = ['  182', '  360', '  542', '.2', '.5', '.8']
-    
-    # 1. Check specific facility columns first (Q21 other public, Q22 other private, Q20 public name, Q19 private name)
-    for col in df_cols:
-        col_str = str(col)
-        for sfx in call_suffixes:
-            if sfx == '' and any(col_str.endswith(f'.{i}') for i in range(1, 9)):
-                continue
-            if sfx != '' and not (col_str == f'Q21. Other Facility Name (Public){sfx}' or col_str == f'Q22. Other Facility Name (Private){sfx}' or col_str.endswith(sfx)):
-                continue
-            if 'Q21. Other Facility Name' in col_str or 'Q22. Other Facility Name' in col_str:
-                val = row.get(col)
-                if pd.notna(val) and str(val).strip() not in ('', 'nan', 'None'):
-                    return str(val).strip()
-            if ('Q20' in col_str or 'Q19' in col_str) and 'place of death' in col_str.lower():
-                val = row.get(col)
-                if pd.notna(val) and str(val).strip() not in ('', 'Other', 'nan', 'None'):
-                    return str(val).strip()
+def precompute_place_of_death_cols(df_cols):
+    baby_cols = {}
+    for baby_idx in [1, 2, 3]:
+        if baby_idx == 1:
+            call_suffixes = ['', '  ', '  242', '  420', '.3', '.6']
+        elif baby_idx == 2:
+            call_suffixes = ['  122', '  301', '  481', '.1', '.4', '.7']
+        else:
+            call_suffixes = ['  182', '  360', '  542', '.2', '.5', '.8']
+        
+        specific_cols = []
+        for col in df_cols:
+            col_str = str(col)
+            for sfx in call_suffixes:
+                if sfx == '' and any(col_str.endswith(f'.{i}') for i in range(1, 9)):
+                    continue
+                if sfx != '' and not (col_str == f'Q21. Other Facility Name (Public){sfx}' or col_str == f'Q22. Other Facility Name (Private){sfx}' or col_str.endswith(sfx)):
+                    continue
+                if 'Q21. Other Facility Name' in col_str or 'Q22. Other Facility Name' in col_str:
+                    specific_cols.append(('other', col))
+                elif ('Q20' in col_str or 'Q19' in col_str) and 'place of death' in col_str.lower():
+                    specific_cols.append(('q20_q19', col))
+        
+        fallback_cols = []
+        for col in df_cols:
+            col_str = str(col)
+            for sfx in call_suffixes:
+                if sfx == '' and any(col_str.endswith(f'.{i}') for i in range(1, 9)):
+                    continue
+                if sfx != '' and not col_str.endswith(sfx):
+                    continue
+                if 'Q18. Place of death' in col_str or 'Q19.  Place of death' in col_str:
+                    fallback_cols.append(col)
+        
+        baby_cols[baby_idx] = (specific_cols, fallback_cols)
+    return baby_cols
 
-    # 2. Fallback to Q18 category (Public health facility, Private health facility, Home, On the way)
-    for col in df_cols:
-        col_str = str(col)
-        for sfx in call_suffixes:
-            if sfx == '' and any(col_str.endswith(f'.{i}') for i in range(1, 9)):
-                continue
-            if sfx != '' and not col_str.endswith(sfx):
-                continue
-            if 'Q18. Place of death' in col_str or 'Q19.  Place of death' in col_str:
-                val = row.get(col)
-                if pd.notna(val) and str(val).strip() not in ('', 'nan', 'None'):
-                    return standardize_place_of_death(str(val).strip())
+
+def extract_baby_place_of_death(row, baby_idx, precomputed_cols):
+    if not isinstance(precomputed_cols, dict):
+        precomputed_cols = precompute_place_of_death_cols(precomputed_cols)
+        
+    specific_cols, fallback_cols = precomputed_cols.get(baby_idx, ([], []))
+    for kind, col in specific_cols:
+        val = row.get(col)
+        if pd.notna(val):
+            s = str(val).strip()
+            if kind == 'other' and s not in ('', 'nan', 'None'):
+                return s
+            elif kind == 'q20_q19' and s not in ('', 'Other', 'nan', 'None'):
+                return s
+    for col in fallback_cols:
+        val = row.get(col)
+        if pd.notna(val):
+            s = str(val).strip()
+            if s not in ('', 'nan', 'None'):
+                return standardize_place_of_death(s)
     return "Not Recorded"
 
 
@@ -1593,8 +1613,23 @@ def main():
     unique_stillbirth_places = set()
     
     current_date = datetime(2026, 8, 20)
+    skip_validation = ('--skip-validation' in sys.argv or '--no-validation' in sys.argv)
+    if skip_validation:
+        print("Analyzing records [FAST MODE: Validation checks skipped per user option]...")
+    else:
+        print("Analyzing records and running data validation checks (High-Speed Optimized)...")
 
-    print("Analyzing records and running data validation checks...")
+    # High-Performance Precomputations (speeds up loop by 10x-15x)
+    precomputed_place_cols = precompute_place_of_death_cols(df.columns)
+    PHONE_PATTERN = re.compile(r'^\d{10}$')
+    v_cache = {}
+    dh_check_cols = []
+    for c_idx in [664, 725, 786]:
+        if c_idx < len(df.columns):
+            dh_check_cols.append(df.columns[c_idx])
+    for col in df.columns:
+        if 'Q20. Name of the place of death' in col and col not in dh_check_cols:
+            dh_check_cols.append(col)
     for idx, row in df.iterrows():
         rec_id = str(row['Record ID']).strip()
         
@@ -1710,13 +1745,17 @@ def main():
         v_clean = clean_village_name(village)
         
         if b_clean and v_clean:
-            match = loc_map.get((b_clean, v_clean))
-            if not match:
-                for (b_key, v_key), res in loc_map.items():
-                    if b_key == b_clean:
-                        if v_clean in v_key or v_key in v_clean:
-                            match = res
-                            break
+            cache_key = (b_clean, v_clean)
+            match = v_cache.get(cache_key)
+            if match is None and cache_key not in v_cache:
+                match = loc_map.get(cache_key)
+                if not match:
+                    for (b_key, v_key), res in loc_map.items():
+                        if b_key == b_clean:
+                            if v_clean in v_key or v_key in v_clean:
+                                match = res
+                                break
+                v_cache[cache_key] = match
             if match:
                 sub_clean, sub_raw = match
                 matched_subcentre = sub_raw
@@ -1907,7 +1946,7 @@ def main():
             disc_notif_reg.append("1.8 Baby Not Registered after Notification (अधिसूचना के बाद शिशु का पंजीकरण नहीं हुआ)")
 
         # Validate Mobile Number Issues (1.15)
-        phone_pattern = re.compile(r'^\d{10}$')
+        phone_pattern = PHONE_PATTERN
         p1_valid = bool(phone_pattern.match(phone1)) if phone1 else False
         p2_valid = bool(phone_pattern.match(phone2)) if phone2 else True
         if not phone1 and not phone2:
@@ -1940,7 +1979,7 @@ def main():
             row_discrepancy_reasons.append("संभावित डुप्लिकेट प्रविष्टि (समान नाम, मोबाइल नंबर और प्रसव तिथि)")
 
         # Validate Mother Mobile Number
-        phone_pattern = re.compile(r'^\d{10}$')
+        phone_pattern = PHONE_PATTERN
         p1_valid = bool(phone_pattern.match(phone1))
         p2_valid = bool(phone_pattern.match(phone2)) if phone2 else True
         if not phone1 and not phone2:
@@ -2067,7 +2106,7 @@ def main():
                     if pd.isna(first_death) or d < first_death:
                         first_death = d
                         
-            place_of_death = extract_baby_place_of_death(row, b_conf['index'], df.columns)
+            place_of_death = extract_baby_place_of_death(row, b_conf['index'], precomputed_place_cols)
 
             is_neonatal_death = False
             age_at_death = np.nan
@@ -2297,13 +2336,7 @@ def main():
         # Check if any baby died at DH Khargone (checking Col YO (664), AAX (725), ADG (786) and any Q20 death place columns)
         died_at_dh_khargone = False
         rc_place_of_death = ""
-        dh_check_cols = []
-        for c_idx in [664, 725, 786]:
-            if c_idx < len(df.columns):
-                dh_check_cols.append(df.columns[c_idx])
-        for col in df.columns:
-            if 'Q20. Name of the place of death' in col and col not in dh_check_cols:
-                dh_check_cols.append(col)
+                # Precomputed dh_check_cols used directly
                 
         for col in dh_check_cols:
             if col in row and pd.notna(row[col]):

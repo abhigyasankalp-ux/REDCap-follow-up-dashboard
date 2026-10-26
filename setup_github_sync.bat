@@ -11,7 +11,22 @@ echo    REDCap Newborn Follow-up Dashboard (Dr. Vikar Saiyad & Abhigya)
 echo =====================================================================
 echo.
 
-:: 1. Check Git Installation
+:: 1. Check Git Installation (checks PATH, GitHub Desktop, and standard locations)
+where git >nul 2>nul
+if %errorlevel% neq 0 (
+    for /d %%D in ("%LOCALAPPDATA%\GitHubDesktop\app-*") do (
+        if exist "%%D\resources\app\git\cmd\git.exe" (
+            set "PATH=%%D\resources\app\git\cmd;!PATH!"
+        )
+    )
+    if exist "C:\Program Files\Git\cmd" (
+        set "PATH=C:\Program Files\Git\cmd;!PATH!"
+    )
+    if exist "%LOCALAPPDATA%\Programs\Git\cmd" (
+        set "PATH=%LOCALAPPDATA%\Programs\Git\cmd;!PATH!"
+    )
+)
+
 where git >nul 2>nul
 if %errorlevel% neq 0 (
     echo [ERROR] Git for Windows is NOT installed or not found in system PATH!

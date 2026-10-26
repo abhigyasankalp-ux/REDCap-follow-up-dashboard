@@ -1112,7 +1112,10 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
     """
     import subprocess
     import shutil
+    import glob
     import json
+    import urllib.parse
+    import re
     
     print("\n" + "=" * 65)
     print("      AUTOMATED GITHUB REPOSITORY SYNC & UPLOAD")
@@ -1132,7 +1135,25 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
         except Exception:
             pass
 
+    # 1. Locate Git binary across standard Windows paths if not in system PATH
     git_bin = shutil.which('git')
+    if not git_bin:
+        candidates = [
+            r'C:\Program Files\Git\cmd\git.exe',
+            r'C:\Program Files\Git\bin\git.exe',
+            r'C:\Program Files (x86)\Git\cmd\git.exe',
+            os.path.expanduser(r'~\AppData\Local\Programs\Git\cmd\git.exe'),
+            os.path.expanduser(r'~\AppData\Local\Programs\Git\bin\git.exe'),
+        ]
+        gh_pattern = os.path.expanduser(r'~\AppData\Local\GitHubDesktop\app-*\resources\app\git\cmd\git.exe')
+        gh_matches = glob.glob(gh_pattern)
+        if gh_matches:
+            candidates.extend(sorted(gh_matches, reverse=True))
+        for p in candidates:
+            if p and os.path.isfile(p):
+                git_bin = p
+                break
+
     if not git_bin:
         msg = (
             "Git is not installed or not in system PATH on this computer.\n"
@@ -1144,8 +1165,16 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
         record_sync_status(False, "Git is not installed on this system")
         return False
         
+    print(f"  [INFO] Using Git binary: {git_bin}")
+
+    def mask_credentials(s):
+        if not s:
+            return ""
+        return re.sub(r'https://([^:@]+):([^@]+)@', r'https://***@', str(s))
+
     try:
         # Check for personal access token in github_token.txt or environment
+        clean_repo_url = repo_url
         auth_repo_url = repo_url
         token = None
         if os.path.exists('github_token.txt'):
@@ -1160,77 +1189,80 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
             token = os.environ.get('GITHUB_TOKEN').strip()
             
         if token and '@github.com' not in repo_url:
-            auth_repo_url = repo_url.replace('https://', f'https://oauth2:{token}@')
+            encoded_token = urllib.parse.quote(token, safe='')
+            auth_repo_url = repo_url.replace('https://', f'https://oauth2:{encoded_token}@')
             print("  [INFO] Using Personal Access Token from 'github_token.txt'.")
 
         # Ensure repository is initialized
         if not os.path.exists('.git'):
             print("  [INFO] Initializing new Git repository on 'main' branch...")
-            subprocess.run(['git', 'init', '-b', 'main'], check=True, capture_output=True)
+            subprocess.run([git_bin, 'init', '-b', 'main'], check=True, capture_output=True)
             
         # Ensure user identity is configured so 'git commit' never throws fatal errors on new systems
-        u_name = subprocess.run(['git', 'config', 'user.name'], capture_output=True, text=True).stdout.strip()
-        u_email = subprocess.run(['git', 'config', 'user.email'], capture_output=True, text=True).stdout.strip()
+        u_name = subprocess.run([git_bin, 'config', 'user.name'], capture_output=True, text=True).stdout.strip()
+        u_email = subprocess.run([git_bin, 'config', 'user.email'], capture_output=True, text=True).stdout.strip()
         if not u_name:
-            subprocess.run(['git', 'config', 'user.name', 'Abhigya Sankalp'], capture_output=True)
+            subprocess.run([git_bin, 'config', 'user.name', 'Abhigya Sankalp'], capture_output=True)
             print("  [INFO] Configured local Git user.name: 'Abhigya Sankalp'")
         if not u_email:
-            subprocess.run(['git', 'config', 'user.email', 'abhigyasankalp.ux@gmail.com'], capture_output=True)
+            subprocess.run([git_bin, 'config', 'user.email', 'abhigyasankalp.ux@gmail.com'], capture_output=True)
             print("  [INFO] Configured local Git user.email: 'abhigyasankalp.ux@gmail.com'")
 
-        remotes_out = subprocess.run(['git', 'remote', '-v'], capture_output=True, text=True).stdout
-        target_remote_url = auth_repo_url if token else repo_url
+        remotes_out = subprocess.run([git_bin, 'remote', '-v'], capture_output=True, text=True).stdout
+        target_remote_url = auth_repo_url if token else clean_repo_url
         if 'origin' not in remotes_out:
-            print(f"  [INFO] Adding remote origin: {repo_url}")
-            subprocess.run(['git', 'remote', 'add', 'origin', target_remote_url], check=True, capture_output=True)
+            print(f"  [INFO] Adding remote origin: {clean_repo_url}")
+            subprocess.run([git_bin, 'remote', 'add', 'origin', target_remote_url], check=True, capture_output=True)
         else:
-            subprocess.run(['git', 'remote', 'set-url', 'origin', target_remote_url], check=True, capture_output=True)
+            subprocess.run([git_bin, 'remote', 'set-url', 'origin', target_remote_url], check=True, capture_output=True)
 
         # 1. Fetch remote main
         print("  [INFO] Synchronizing with remote repository...")
         try:
-            subprocess.run(['git', 'fetch', 'origin', 'main'], capture_output=True, text=True, timeout=45)
-            pull_res = subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=45)
+            subprocess.run([git_bin, 'fetch', 'origin', 'main'], capture_output=True, text=True, timeout=45)
+            pull_res = subprocess.run([git_bin, 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=45)
             if pull_res.returncode != 0:
-                subprocess.run(['git', 'rebase', '--abort'], capture_output=True, text=True)
+                subprocess.run([git_bin, 'rebase', '--abort'], capture_output=True, text=True)
                 # If freshly initialized repo with unrelated histories:
-                subprocess.run(['git', 'pull', 'origin', 'main', '--allow-unrelated-histories', '--no-edit', '-X', 'theirs'], capture_output=True, text=True, timeout=45)
+                subprocess.run([git_bin, 'pull', 'origin', 'main', '--allow-unrelated-histories', '--no-edit', '-X', 'theirs'], capture_output=True, text=True, timeout=45)
         except Exception as e_pull:
-            print(f"  [NOTICE] Remote fetch info: {e_pull}")
+            print(f"  [NOTICE] Remote fetch info: {mask_credentials(e_pull)}")
 
         # 2. Stage allowed files (honoring .gitignore to protect raw patient data)
         print("  [INFO] Staging dashboard and application files (honoring .gitignore)...")
-        subprocess.run(['git', 'add', '-A'], check=True, capture_output=True)
+        subprocess.run([git_bin, 'add', '-A'], check=True, capture_output=True)
         
-        status_proc = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+        status_proc = subprocess.run([git_bin, 'status', '--porcelain'], capture_output=True, text=True)
         if not status_proc.stdout.strip():
             print("  [INFO] No changes detected in dashboard build. Working tree is clean.")
         else:
             commit_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             commit_msg = f"Dashboard auto-update: {commit_time}"
             print(f"  [INFO] Committing changes: '{commit_msg}'")
-            c_proc = subprocess.run(['git', 'commit', '-m', commit_msg], capture_output=True, text=True)
+            c_proc = subprocess.run([git_bin, 'commit', '-m', commit_msg], capture_output=True, text=True)
             if c_proc.returncode != 0:
-                print(f"  [WARNING] Commit notice: {c_proc.stderr.strip()}")
+                print(f"  [WARNING] Commit notice: {mask_credentials(c_proc.stderr.strip())}")
             
         print("  [INFO] Pushing latest changes to GitHub repository...")
-        push_proc = subprocess.run(['git', 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
+        push_proc = subprocess.run([git_bin, 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
         
         # If push failed because remote moved ahead, retry with rebase
         if push_proc.returncode != 0 and 'non-fast-forward' in (push_proc.stderr + push_proc.stdout):
             print("  [INFO] Retrying push with rebase synchronization...")
-            subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=45)
-            push_proc = subprocess.run(['git', 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
+            subprocess.run([git_bin, 'pull', '--rebase', 'origin', 'main'], capture_output=True, text=True, timeout=45)
+            push_proc = subprocess.run([git_bin, 'push', '-u', 'origin', 'main'], capture_output=True, text=True, timeout=90)
 
         if push_proc.returncode == 0:
-            commit_hash = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
-            print(f"  [SUCCESS] Successfully pushed latest dashboard to: {repo_url}")
+            commit_hash = subprocess.run([git_bin, 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
+            print(f"  [SUCCESS] Successfully pushed latest dashboard to: {clean_repo_url}")
             print(f"  [COMMIT] Commit SHA: {commit_hash}")
+            print("  [LIVE LINK] https://abhigyasankalp-ux.github.io/REDCap-follow-up-dashboard/")
             print("  [NOTICE] If viewing on GitHub Pages, allow 1-2 minutes for deployment, or hard-refresh (Ctrl+F5).")
             record_sync_status(True, "Successfully pushed to GitHub", commit_hash)
             return True
         else:
-            err_msg = push_proc.stderr.strip() or push_proc.stdout.strip()
+            raw_err = push_proc.stderr.strip() or push_proc.stdout.strip()
+            err_msg = mask_credentials(raw_err)
             print("\n  " + "!" * 60)
             print("  [WARNING] GITHUB UPLOAD FAILED ON THIS COMPUTER")
             print("  " + "!" * 60)
@@ -1250,9 +1282,9 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
         record_sync_status(False, msg)
         return False
     except Exception as e:
-        msg = f"Auto upload to GitHub skipped: {e}"
+        msg = f"Auto upload to GitHub skipped: {mask_credentials(e)}"
         print(f"  [WARNING] {msg}")
-        record_sync_status(False, str(e))
+        record_sync_status(False, str(msg))
         return False
 
 

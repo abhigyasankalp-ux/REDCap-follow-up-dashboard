@@ -11,6 +11,22 @@ echo           SANKALP RESEARCH - NEWBORN FOLLOW-UP DASHBOARD
 echo =====================================================================
 echo.
 
+:: Ensure Git is available in PATH
+where git >nul 2>nul
+if %errorlevel% neq 0 (
+    for /d %%D in ("%LOCALAPPDATA%\GitHubDesktop\app-*") do (
+        if exist "%%D\resources\app\git\cmd\git.exe" (
+            set "PATH=%%D\resources\app\git\cmd;!PATH!"
+        )
+    )
+    if exist "C:\Program Files\Git\cmd" (
+        set "PATH=C:\Program Files\Git\cmd;!PATH!"
+    )
+    if exist "%LOCALAPPDATA%\Programs\Git\cmd" (
+        set "PATH=%LOCALAPPDATA%\Programs\Git\cmd;!PATH!"
+    )
+)
+
 :: 1. Check if Python is available in PATH
 where python >nul 2>nul
 if %errorlevel% neq 0 (

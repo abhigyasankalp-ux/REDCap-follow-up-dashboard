@@ -17,16 +17,41 @@ def name_similarity(a, b):
     b_norm = clean_and_normalize(b)
     if not a_norm or not b_norm:
         return 0.0
+    if a_norm == b_norm:
+        return 1.0
+    len_a = len(a_norm)
+    len_b = len(b_norm)
+    if (2.0 * min(len_a, len_b)) / (len_a + len_b) < 0.60:
+        return 0.0
     return SequenceMatcher(None, a_norm, b_norm).ratio()
 
+_DATE_CACHE = {}
+
 def clean_and_parse_date(val):
-    if pd.isna(val):
+    if val is None or pd.isna(val):
         return pd.NaT
+    if isinstance(val, pd.Timestamp):
+        return val
+    if hasattr(val, 'date') and not isinstance(val, str):
+        return pd.to_datetime(val)
+        
+    try:
+        if val in _DATE_CACHE:
+            return _DATE_CACHE[val]
+    except (TypeError, KeyError):
+        pass
+
+    res = _clean_and_parse_date_uncached(val)
+    try:
+        _DATE_CACHE[val] = res
+    except (TypeError, KeyError):
+        pass
+    return res
+
+def _clean_and_parse_date_uncached(val):
     if isinstance(val, (int, float, np.integer, np.floating)):
         if 30000 <= val <= 65000:
             return pd.to_datetime('1899-12-30') + pd.to_timedelta(val, unit='D')
-    if isinstance(val, pd.Timestamp) or isinstance(val, type(pd.NaT)) or hasattr(val, 'date'):
-        return pd.to_datetime(val)
     val_str = str(val).strip()
     if not val_str:
         return pd.NaT
@@ -37,7 +62,6 @@ def clean_and_parse_date(val):
     except:
         pass
         
-    import re
     parts = re.split(r'[^0-9]', val_str)
     if len(parts) >= 3 and len(parts[0]) == 4:
         # yyyy-mm-dd or yyyy/mm/dd format -> parse year-first
@@ -58,6 +82,12 @@ def clean_and_parse_date(val):
 def swap_md(dt):
     if pd.isna(dt):
         return dt
+    if dt.day <= 12:
+        try:
+            return pd.Timestamp(year=dt.year, month=dt.day, day=dt.month, hour=dt.hour, minute=dt.minute)
+        except:
+            return dt
+    return dt
 
 INTERGROWTH_LIMITS = {
     24: { 'male': (360, 1060), 'female': (340, 1020) },
@@ -104,12 +134,6 @@ def check_factors_missing(row, baby_index, df_cols):
         if any_checked:
             break
     return not any_checked
-    if dt.day <= 12:
-        try:
-            return pd.Timestamp(year=dt.year, month=dt.day, day=dt.month, hour=dt.hour, minute=dt.minute)
-        except:
-            return dt
-    return dt
 
 def clean_subcentre_name(name):
     if pd.isna(name):
@@ -639,11 +663,9 @@ def populate_excel_reporting_format(df_redcap):
             }
         ]
         
-        if 'parsed_deliv_date' not in df_redcap.columns:
-            df_redcap['parsed_deliv_date'] = df_redcap['Q33. Delivery Date'].apply(clean_and_parse_date)
-            
         monthly_stats = {}
         rows_to_process = []
+        months_needed = set()
         for r in range(2, max_row + 1):
             cell_val = ws.cell(row=r, column=1).value
             if cell_val:
@@ -655,14 +677,22 @@ def populate_excel_reporting_format(df_redcap):
                 else:
                     m_date = cell_val
                 rows_to_process.append((r, m_date))
+                months_needed.add((m_date.year, m_date.month))
                 
+        # Group records by (year, month) in a single fast pass avoiding DataFrame fragmentation
+        records_by_ym = {ym: [] for ym in months_needed}
+        all_rc_records = df_redcap.to_dict('records')
+        for rec in all_rc_records:
+            d_dt = clean_and_parse_date(rec.get('Q33. Delivery Date'))
+            if pd.notna(d_dt):
+                ym = (d_dt.year, d_dt.month)
+                if ym in records_by_ym:
+                    rec['parsed_deliv_date'] = d_dt
+                    records_by_ym[ym].append(rec)
+                    
         for r, m_date in rows_to_process:
-            df_m = df_redcap[
-                (df_redcap['parsed_deliv_date'].dt.year == m_date.year) & 
-                (df_redcap['parsed_deliv_date'].dt.month == m_date.month)
-            ]
-            
-            tot_del = len(df_m)
+            month_records = records_by_ym.get((m_date.year, m_date.month), [])
+            tot_del = len(month_records)
             
             b_govt = 0
             b_pvt = 0
@@ -690,7 +720,7 @@ def populate_excel_reporting_format(df_redcap):
             twins = 0
             triplets = 0
             
-            for _, row in df_m.iterrows():
+            for row in month_records:
                 deliv_loc_cat = str(row['Q41. Delivery Location']).strip() if pd.notna(row['Q41. Delivery Location']) else "Unknown"
                 has_out_district = 'Q44. Other/ Delivery outside the district' in row and pd.notna(row['Q44. Other/ Delivery outside the district']) and str(row['Q44. Other/ Delivery outside the district']).strip() != ""
                 
@@ -1110,6 +1140,9 @@ def auto_upload_to_github(repo_url='https://github.com/abhigyasankalp-ux/REDCap-
     Strictly honors .gitignore to ensure NO raw patient/REDCap/Anmol/SNCU data is committed or exposed.
     Works reliably across different systems (including Abhigya's computer).
     """
+    if '--no-git' in sys.argv or '--skip-git' in sys.argv:
+        print("\n[INFO] Skipping automated GitHub upload per command-line option.")
+        return
     import subprocess
     import shutil
     import glob
@@ -1366,7 +1399,7 @@ def main():
             df_cho['clean_subcentre'] = df_cho['Sub Health Facility'].apply(clean_subcentre_name)
 
             has_rc_col = 'Redcap Village list' in df_loc.columns
-            for _, r_loc in df_loc.iterrows():
+            for r_loc in df_loc.to_dict('records'):
                 b = r_loc['clean_block']
                 v = r_loc['clean_village']
                 sub = r_loc['clean_subcentre']
@@ -1380,7 +1413,7 @@ def main():
                         if b and v_rc:
                             loc_map[(b, v_rc)] = (sub, sub_raw)
 
-            for _, r_anm in df_anm.iterrows():
+            for r_anm in df_anm.to_dict('records'):
                 b = r_anm['clean_block']
                 sub = r_anm['clean_subcentre']
                 name = str(r_anm['ANM Name']).strip()
@@ -1389,7 +1422,7 @@ def main():
                 if b and sub:
                     anm_map[(b, sub)] = (name, phone)
 
-            for _, r_cho in df_cho.iterrows():
+            for r_cho in df_cho.to_dict('records'):
                 b = r_cho['clean_block']
                 sub = r_cho['clean_subcentre']
                 name = str(r_cho['Name of CHO']).strip()
@@ -1621,17 +1654,21 @@ def main():
         print(f"[WARNING] Error running Excel report generation: {e}")
 
     # Pre-compute key counts for REDCap duplicate check: (Mother Name + Mobile + Delivery Date)
-    df['clean_m_name'] = df['Q2.Mother Name'].apply(clean_mother_name_for_dedup)
-    df['clean_phone1'] = df['Q16. Family Mobile Number'].apply(lambda x: str(int(x)) if pd.notna(x) and not isinstance(x, str) else str(x).strip() if pd.notna(x) else "")
-    df['clean_phone1'] = df['clean_phone1'].apply(lambda x: x[:-2] if x.endswith('.0') else x)
-    df['parsed_deliv_date'] = df['Q33. Delivery Date'].apply(clean_and_parse_date)
+    clean_m_names = [clean_mother_name_for_dedup(v) for v in df['Q2.Mother Name']]
+    clean_phone1s = []
+    for x in df['Q16. Family Mobile Number']:
+        if pd.isna(x):
+            clean_phone1s.append("")
+        elif not isinstance(x, str):
+            clean_phone1s.append(str(int(x)) if not pd.isna(x) else "")
+        else:
+            s = str(x).strip()
+            clean_phone1s.append(s[:-2] if s.endswith('.0') else s)
+    parsed_deliv_dates = [clean_and_parse_date(v) for v in df['Q33. Delivery Date']]
+    d_date_strs = [d.strftime("%Y-%m-%d") if pd.notna(d) else "" for d in parsed_deliv_dates]
     
     key_counts = {}
-    for _, row in df.iterrows():
-        m_name = row['clean_m_name']
-        phone = row['clean_phone1']
-        d_date = row['parsed_deliv_date']
-        d_date_str = d_date.strftime("%Y-%m-%d") if pd.notna(d_date) else ""
+    for m_name, phone, d_date_str in zip(clean_m_names, clean_phone1s, d_date_strs):
         if m_name and phone and d_date_str:
             key = (m_name, phone, d_date_str)
             key_counts[key] = key_counts.get(key, 0) + 1
@@ -1662,7 +1699,9 @@ def main():
     for col in df.columns:
         if 'Q20. Name of the place of death' in col and col not in dh_check_cols:
             dh_check_cols.append(col)
-    for idx, row in df.iterrows():
+    
+    df_records = df.to_dict('records')
+    for row in df_records:
         rec_id = str(row['Record ID']).strip()
         
         mother_name = ""
@@ -2432,6 +2471,7 @@ def main():
     redcap_records_by_date = {}
     redcap_by_mp_id = {}
     redcap_by_phone_date = {}
+    redcap_by_date_clean_mother = {}
     
     for r in records:
         d_date = r['deliv_date']
@@ -2465,6 +2505,8 @@ def main():
             if d_date not in redcap_records_by_date:
                 redcap_records_by_date[d_date] = []
             redcap_records_by_date[d_date].append(item)
+            if m_clean and (d_date, m_clean) not in redcap_by_date_clean_mother:
+                redcap_by_date_clean_mother[(d_date, m_clean)] = r
 
     # Load and process Anmol Delivery Data (Home & Out-of-District) with REDCap cross-deduplication
     print("Loading Anmol Delivery Data...")
@@ -2503,7 +2545,14 @@ def main():
             df_deliv = pd.DataFrame()
             print("Warning: No Anmol Delivery Data loaded!")
             
-        for _, r_del in df_deliv.iterrows():
+        anmol_records = []
+        if not df_deliv.empty:
+            deliv_at_s = df_deliv['Delivery At'].astype(str).str.strip()
+            deliv_dist_s = df_deliv['District.1'].fillna('').astype(str).str.strip() if 'District.1' in df_deliv.columns else pd.Series('', index=df_deliv.index)
+            mask_relevant = (deliv_at_s == 'Home') | ((deliv_dist_s != '') & (deliv_dist_s != 'West Nimar (Khargone)'))
+            anmol_records = df_deliv[mask_relevant].to_dict('records')
+            
+        for r_del in anmol_records:
             deliv_at = str(r_del['Delivery At']).strip()
             deliv_district = str(r_del['District.1']).strip() if pd.notna(r_del['District.1']) else ""
                 
@@ -2557,12 +2606,18 @@ def main():
 
                 # 3. Match through exact Mother Name + Date
                 if not is_match and a_name_clean:
-                    for rc in rc_list:
-                        if rc['mother_clean'] == a_name_clean:
-                            is_match = True
-                            match_type = 'exact'
-                            matched_rc_record = rc['record']
-                            break
+                    matched_fast = redcap_by_date_clean_mother.get((deliv_date_str, a_name_clean))
+                    if matched_fast:
+                        is_match = True
+                        match_type = 'exact'
+                        matched_rc_record = matched_fast
+                    else:
+                        for rc in rc_list:
+                            if rc['mother_clean'] == a_name_clean:
+                                is_match = True
+                                match_type = 'exact'
+                                matched_rc_record = rc['record']
+                                break
                             
                 # 4. Match through ANC Name + Husband Name (minor spelling mismatch) + Date
                 if not is_match:
@@ -2881,6 +2936,7 @@ def main():
 
             for rc in records:
                 if rc.get('died_at_dh_khargone'):
+                    rc['parsed_deliv_date_dt'] = clean_and_parse_date(rc.get('deliv_date'))
                     rc_dh_khargone.append(rc)
 
                 p1 = rc.get('phone1', '').strip()
@@ -2903,7 +2959,7 @@ def main():
                     rc_clean_father.setdefault(f_c, []).append(rc)
 
             # Filter for SNCU Neonatal Deaths <= 28 days calculated from Date of Birth and Discharge (Date of Death)
-            for idx, s_row in df_sncu.iterrows():
+            for s_row in df_sncu.to_dict('records'):
                 outcome_str = str(s_row.get('Outcome', '')).strip().upper() if pd.notna(s_row.get('Outcome')) else ""
                 nd_28_val = float(s_row.get('Neonatal Death (<=28d)', 0)) if pd.notna(s_row.get('Neonatal Death (<=28d)')) else 0.0
                 
@@ -2986,7 +3042,7 @@ def main():
                     if contact and (contact == p1 or contact == p2):
                         score += 50
                     
-                    rc_d = clean_and_parse_date(rc.get('deliv_date'))
+                    rc_d = rc.get('parsed_deliv_date_dt')
                     if pd.notna(rc_d) and pd.notna(dob):
                         days_diff = abs((rc_d - dob).days)
                         if days_diff == 0: score += 40
@@ -3024,7 +3080,7 @@ def main():
                 # 4. Contact Match + DOB within 7 days
                 if not matched_rc and contact and contact in rc_phone and pd.notna(dob):
                     for rc in rc_phone[contact]:
-                        rc_d = clean_and_parse_date(rc.get('deliv_date'))
+                        rc_d = rc.get('parsed_deliv_date_dt')
                         if pd.notna(rc_d) and abs((rc_d - dob).days) <= 7:
                             matched_rc = rc
                             break
@@ -3322,7 +3378,7 @@ def main():
                     print(f"  Combined Khandwa SNCU files. Total rows: {len(df_khandwa)} (Could not deduplicate, no ID col)")
                 df_khandwa_expired = df_khandwa[df_khandwa['Outcome'].astype(str).str.strip().str.upper() == 'EXPIRED'].copy()
                 
-                for _, s_row in df_khandwa_expired.iterrows():
+                for s_row in df_khandwa_expired.to_dict('records'):
                     adm_id = str(s_row.get('Admission ID', '')).strip()
                     m_name = str(s_row.get("Mother's Name", s_row.get('Mother Name', ''))).strip()
                     f_name = str(s_row.get("Father's Name", s_row.get('Father Name', ''))).strip()

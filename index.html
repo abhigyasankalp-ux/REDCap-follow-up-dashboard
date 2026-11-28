@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sankalp Follow-up Dashboard</title>
-    <link rel="stylesheet" href="templates/index.css?v=20261128102644">
+    <link rel="stylesheet" href="templates/index.css?v=20261128110123">
     <!-- Chart.js Standalone Bundle -->
     <script src="templates/chart.min.js"></script>
 </head>
@@ -377,9 +377,11 @@
                             <div class="filter-group-inline" style="margin-right: 12px; display: inline-flex; align-items: center; gap: 6px;">
                                 <label for="filter-pending-type" style="font-size: 0.65rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase;">Follow-up Type</label>
                                 <select id="filter-pending-type" class="filter-select" style="font-size: 0.75rem; padding: 4px 8px; height: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; min-width: 250px;">
-                                    <option value="ALL">All Pending (Age >= 29 Days)</option>
-                                    <option value="D29">29th Day Follow-up (Age 29 Days)</option>
-                                    <option value="OVERDUE">Previous Pending Follow-ups (Age >= 30 Days)</option>
+                                    <option value="ALL">All Due & Overdue (Age >= 28 Days)</option>
+                                    <option value="D28">Due Today (Day 28 Follow-up)</option>
+                                    <option value="D29">Day 29 Follow-up</option>
+                                    <option value="OVERDUE">Overdue Follow-ups (Age >= 29 Days)</option>
+                                    <option value="ALL_COHORT">All Incomplete Cases (All Cohort Ages)</option>
                                 </select>
                             </div>
                             <div class="search-bar-wrap">
@@ -1150,7 +1152,7 @@
     </div>
 
     <!-- Main Logic Script Reference (Bundled inline by script) -->
-    <script src="dashboard_data.js?v=20261128102644"></script>
-    <script src="templates/index.js?v=20261128102644"></script>
+    <script src="dashboard_data.js?v=20261128110123"></script>
+    <script src="templates/index.js?v=20261128110123"></script>
 </body>
 </html>

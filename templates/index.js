@@ -1052,7 +1052,7 @@ function updateDashboard() {
             }
             
             if (baby.status === 'Pending') {
-                if (ageInDays >= 29) {
+                if (ageInDays >= 28) {
                     pending++;
                 }
             } else if (baby.is_lost_to_followup || (baby.status && baby.status.startsWith('Lost:'))) {
@@ -1158,9 +1158,9 @@ function updateTabBadges() {
         
         if (activeMonths.length > 0 && !activeMonths.includes('ALL') && !activeMonths.includes(item.delivery_date.substring(0, 7))) return false;
         
-        // Exclude infants in their neonatal period (< 29 days of age)
+        // Exclude infants in their neonatal period (< 28 days of age)
         const ageInDays = getBabyAgeInDays(item.delivery_date);
-        return ageInDays >= 29;
+        return ageInDays >= 28;
     }).length;
     document.getElementById('badge-pending').textContent = countPending.toLocaleString();
 
@@ -2636,14 +2636,23 @@ function renderPendingList() {
         
         if (activeMonths.length > 0 && !activeMonths.includes('ALL') && !activeMonths.includes(item.delivery_date.substring(0, 7))) return false;
         
-        // Pending timeline policy: exclude infants under 29 days of age
+        // Pending timeline policy: include cases based on Day 28 eligibility
         const ageInDays = getBabyAgeInDays(item.delivery_date);
-        if (ageInDays < 29) return false;
 
-        // Pending Type Filter (29th Day vs Overdue)
-        if (activePendingType !== 'ALL') {
-            if (activePendingType === 'D29' && ageInDays !== 29) return false;
-            if (activePendingType === 'OVERDUE' && ageInDays < 30) return false;
+        // Pending Type Filter:
+        // ALL: Due Today or Overdue (Age >= 28 Days)
+        // D28: Due Today (28th Day)
+        // D29: Day 29 Follow-up
+        // OVERDUE: Previous Pending Follow-ups (Age >= 29 Days)
+        // ALL_COHORT: All incomplete cases without age restriction
+        if (activePendingType === 'ALL') {
+            if (ageInDays < 28) return false;
+        } else if (activePendingType === 'D28') {
+            if (ageInDays !== 28) return false;
+        } else if (activePendingType === 'D29') {
+            if (ageInDays !== 29) return false;
+        } else if (activePendingType === 'OVERDUE') {
+            if (ageInDays < 29) return false;
         }
 
         if (searchPending) {
@@ -3697,7 +3706,7 @@ function getTabExportData(tabName) {
         ];
         rows = data.map(r => {
             const ageDays = getBabyAgeInDays(r.delivery_date);
-            const pendingStatus = ageDays === 29 ? "Day 29 Follow-up" : (ageDays >= 30 ? `Overdue (${ageDays}d)` : `Pending (${ageDays}d)`);
+            const pendingStatus = ageDays === 28 ? "Day 28 (Due Today)" : (ageDays === 29 ? "Day 29 Follow-up" : (ageDays >= 30 ? `Overdue (${ageDays}d)` : `Pending (${ageDays}d)`));
             const babyIdsStr = (r.babies || []).map(b => b.baby_id || ('Baby ' + b.baby_index)).join('; ');
             return [
                 r.id,

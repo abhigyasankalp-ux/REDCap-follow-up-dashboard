@@ -341,9 +341,36 @@ function initializeFilters() {
             selectDeathPlace.appendChild(option);
         });
     }
-    if (selectStillbirthPlace && dbData.metadata.stillbirth_places) {
-        selectStillbirthPlace.innerHTML = '<option value="ALL">All Places</option>';
-        dbData.metadata.stillbirth_places.forEach(p => {
+    // Build unified delivery places list including 'Home' and all recorded facilities
+    const deliveryPlacesSet = new Set();
+    if (dbData.metadata && dbData.metadata.stillbirth_places) {
+        dbData.metadata.stillbirth_places.forEach(p => { if (p && p.trim()) deliveryPlacesSet.add(p.trim()); });
+    }
+    if (dbData.metadata && dbData.metadata.places_of_delivery) {
+        dbData.metadata.places_of_delivery.forEach(p => { if (p && p.trim()) deliveryPlacesSet.add(p.trim()); });
+    }
+    if (dbData.neonatal_deaths_list) {
+        dbData.neonatal_deaths_list.forEach(d => {
+            const p = (d.deliv_place && d.deliv_place !== 'Not Recorded') ? d.deliv_place : (d.deliv_loc === 'Home' ? 'Home' : null);
+            if (p && p.trim()) deliveryPlacesSet.add(p.trim());
+        });
+    }
+    if (dbData.stillbirths_list) {
+        dbData.stillbirths_list.forEach(s => {
+            const p = (s.deliv_place && s.deliv_place !== 'Not Recorded') ? s.deliv_place : (s.deliv_loc === 'Home' ? 'Home' : null);
+            if (p && p.trim()) deliveryPlacesSet.add(p.trim());
+        });
+    }
+    deliveryPlacesSet.add('Home');
+    const sortedDelivPlaces = Array.from(deliveryPlacesSet).sort((a, b) => {
+        if (a === 'Home') return -1;
+        if (b === 'Home') return 1;
+        return a.localeCompare(b);
+    });
+
+    if (selectStillbirthPlace) {
+        selectStillbirthPlace.innerHTML = '<option value="ALL">All Places of Delivery</option>';
+        sortedDelivPlaces.forEach(p => {
             const option = document.createElement('option');
             option.value = p;
             option.textContent = p;
@@ -351,10 +378,9 @@ function initializeFilters() {
         });
     }
 
-    if (selectDeathDelivPlace && (dbData.metadata.stillbirth_places || dbData.metadata.places_of_delivery)) {
-        const places = dbData.metadata.stillbirth_places || dbData.metadata.places_of_delivery || [];
+    if (selectDeathDelivPlace) {
         selectDeathDelivPlace.innerHTML = '<option value="ALL">All Places of Delivery</option>';
-        places.forEach(p => {
+        sortedDelivPlaces.forEach(p => {
             const option = document.createElement('option');
             option.value = p;
             option.textContent = p;
@@ -732,6 +758,14 @@ if (selectDiscrepancyDay29) selectDiscrepancyDay29.value = 'ALL';
             activeStillbirthPlace = e.target.value;
             visibleStillbirths = 20;
             renderStillbirthsList();
+        });
+    }
+
+    if (selectDeathDelivPlace) {
+        selectDeathDelivPlace.addEventListener('change', (e) => {
+            activeDeathDelivPlace = e.target.value;
+            visibleDeaths = 20;
+            renderDeathsList();
         });
     }
 
@@ -2881,7 +2915,16 @@ function renderDeathsList() {
         // Neonatal Deaths sub-filters
         if (activeDeathBaby !== 'ALL' && item.baby_num !== activeDeathBaby) return false;
         if (activeDeathPlace !== 'ALL' && item.place_of_death !== activeDeathPlace) return false;
-        if (activeDeathDelivPlace !== 'ALL' && item.deliv_place !== activeDeathDelivPlace) return false;
+        if (activeDeathDelivPlace !== 'ALL') {
+            const itemDeliv = (item.deliv_place && item.deliv_place !== 'Not Recorded')
+                ? item.deliv_place
+                : (item.deliv_loc === 'Home' ? 'Home' : item.deliv_place);
+            if (activeDeathDelivPlace === 'Home') {
+                if (itemDeliv !== 'Home' && item.deliv_loc !== 'Home') return false;
+            } else {
+                if (itemDeliv !== activeDeathDelivPlace) return false;
+            }
+        }
 
         if (searchDeaths) {
             const matchName = item.name.toLowerCase().includes(searchDeaths);
@@ -2899,7 +2942,7 @@ function renderDeathsList() {
     document.getElementById('deaths-count-badge').textContent = `${filtered.length.toLocaleString()} death${filtered.length === 1 ? '' : 's'}`;
 
     if (filtered.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="10" class="no-records-msg">No neonatal deaths recorded.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="12" class="no-records-msg">No neonatal deaths recorded.</td></tr>';
         cardsContainer.innerHTML = '<div class="no-records-msg">No neonatal deaths recorded.</div>';
         loadMoreBtn.style.display = 'none';
         return;
@@ -2922,6 +2965,7 @@ function renderDeathsList() {
                 <td>${formatDateStr(item.death_date)}</td>
                 <td><strong style="color:var(--color-danger)">${item.age_at_death !== null ? item.age_at_death + ' days' : 'ASHA report'}</strong></td>
                 <td>${item.place_of_death}</td>
+                <td><strong>${(item.deliv_place && item.deliv_place !== 'Not Recorded') ? item.deliv_place : (item.deliv_loc === 'Home' ? 'Home' : (item.deliv_loc || 'Not Recorded'))}</strong></td>
                 <td>${item.phone1 || "N/A"}</td>
             </tr>
         `;
@@ -2961,7 +3005,7 @@ function renderDeathsList() {
                     </div>
                     <div style="display:grid; grid-template-columns:1fr; gap:4px; font-size:0.8rem; border-top: 1px dashed var(--color-border); padding-top: 8px; margin-top: 8px;">
                         <div><span style="color:var(--color-text-muted)">Location:</span> <strong>${item.deliv_loc || "Not Recorded"}</strong></div>
-                        <div><span style="color:var(--color-text-muted)">Place Name:</span> <strong>${item.deliv_place || "Not Recorded"}</strong></div>
+                        <div><span style="color:var(--color-text-muted)">Place Name:</span> <strong>${(item.deliv_place && item.deliv_place !== 'Not Recorded') ? item.deliv_place : (item.deliv_loc === 'Home' ? 'Home' : (item.deliv_loc || 'Not Recorded'))}</strong></div>
                     </div>
                 </div>
             </div>
@@ -2993,7 +3037,16 @@ function renderStillbirthsList() {
         
         // Stillbirth sub-filters
         if (activeStillbirthLoc !== 'ALL' && item.deliv_loc !== activeStillbirthLoc) return false;
-        if (activeStillbirthPlace !== 'ALL' && item.deliv_place !== activeStillbirthPlace) return false;
+        if (activeStillbirthPlace !== 'ALL') {
+            const itemDeliv = (item.deliv_place && item.deliv_place !== 'Not Recorded')
+                ? item.deliv_place
+                : (item.deliv_loc === 'Home' ? 'Home' : item.deliv_place);
+            if (activeStillbirthPlace === 'Home') {
+                if (itemDeliv !== 'Home' && item.deliv_loc !== 'Home') return false;
+            } else {
+                if (itemDeliv !== activeStillbirthPlace) return false;
+            }
+        }
         if (activeStillbirthBaby !== 'ALL' && item.baby_num !== activeStillbirthBaby) return false;
 
         if (searchStillbirths) {
@@ -3033,7 +3086,7 @@ function renderStillbirthsList() {
                 <td>${item.weight ? item.weight+'g' : 'Not Recorded'}</td>
                 <td>${formatDateStr(item.delivery_date)}</td>
                 <td>${item.deliv_loc || "Not Recorded"}</td>
-                <td>${item.deliv_place || "Not Recorded"}</td>
+                <td><strong>${(item.deliv_place && item.deliv_place !== 'Not Recorded') ? item.deliv_place : (item.deliv_loc === 'Home' ? 'Home' : (item.deliv_loc || 'Not Recorded'))}</strong></td>
                 <td>${item.phone1 || "N/A"}</td>
             </tr>
         `;
@@ -3070,7 +3123,7 @@ function renderStillbirthsList() {
                     </div>
                     <div style="display:grid; grid-template-columns:1fr; gap:4px; font-size:0.8rem; border-top: 1px dashed var(--color-border); padding-top: 8px; margin-top: 8px;">
                         <div><span style="color:var(--color-text-muted)">Location:</span> <strong>${item.deliv_loc || "Not Recorded"}</strong></div>
-                        <div><span style="color:var(--color-text-muted)">Place Name:</span> <strong>${item.deliv_place || "Not Recorded"}</strong></div>
+                        <div><span style="color:var(--color-text-muted)">Place Name:</span> <strong>${(item.deliv_place && item.deliv_place !== 'Not Recorded') ? item.deliv_place : (item.deliv_loc === 'Home' ? 'Home' : (item.deliv_loc || 'Not Recorded'))}</strong></div>
                     </div>
                 </div>
             </div>
@@ -3743,7 +3796,7 @@ function getTabExportData(tabName) {
             r.block,
             formatDateStr(r.delivery_date),
             r.deliv_loc || 'Not Recorded',
-            r.deliv_place || 'Not Recorded',
+            (r.deliv_place && r.deliv_place !== 'Not Recorded') ? r.deliv_place : (r.deliv_loc === 'Home' ? 'Home' : (r.deliv_loc || 'Not Recorded')),
             r.village || 'Not Recorded',
             r.gp || 'Not Recorded',
             r.reasons || r.notes || 'Still Born / IUD',
@@ -3818,7 +3871,7 @@ function getTabExportData(tabName) {
         headers = [
             "Record ID", "MP ID / RCH ID", "Block", "Mother Name", "Husband Name",
             "Baby Number", "Sex", "Birth Weight", "Delivery Date", "Death Date",
-            "Age at Death", "Place of Death", "Family Mobile"
+            "Age at Death", "Place of Death", "Place of Delivery", "Family Mobile"
         ];
         rows = data.map(r => [
             r.id,
@@ -3833,6 +3886,7 @@ function getTabExportData(tabName) {
             formatDateStr(r.death_date),
             r.age_at_death !== null ? r.age_at_death + ' days' : 'N/A',
             r.place_of_death || 'Not Recorded',
+            (r.deliv_place && r.deliv_place !== 'Not Recorded') ? r.deliv_place : (r.deliv_loc === 'Home' ? 'Home' : (r.deliv_loc || 'Not Recorded')),
             r.phone1 || ''
         ]);
     } else if (tabName === 'khandwa_sncu') {

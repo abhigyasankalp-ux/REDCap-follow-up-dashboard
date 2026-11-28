@@ -1743,6 +1743,12 @@ def main():
                 deliv_place = str(row[dp_col]).strip()
                 break
         
+        # If public facility column BY is blank and delivery was at Home (Col BJ), set place to 'Home'
+        if deliv_place == "Not Recorded" and deliv_loc == "Home":
+            deliv_place = "Home"
+        elif deliv_place == "Not Recorded" and deliv_loc == "On the way":
+            deliv_place = "On the way"
+        
         # Parse Q26. MP ID (optional) (Column AR) and Q23. Mother RCH / Aadhaar ID (optional) (Column AO)
         mp_id_26 = str(row[ar_col]).strip() if ar_col and ar_col in row and pd.notna(row[ar_col]) else ""
         if mp_id_26.endswith('.0'):
@@ -2362,6 +2368,8 @@ def main():
                     row_neonatal_deaths += 1
                     if place_of_death and place_of_death != "Not Recorded":
                         unique_places_of_death.add(place_of_death)
+                    if deliv_place and deliv_place != "Not Recorded":
+                        unique_stillbirth_places.add(deliv_place)
                     
             if is_stillbirth:
                 baby_status = 'Stillbirth'
@@ -3898,6 +3906,7 @@ def main():
             'followup_coordinators': sorted(list(unique_followup_coordinators)),
             'places_of_death': sorted(list(unique_places_of_death)),
             'stillbirth_places': sorted(list(unique_stillbirth_places)),  # Dynamic stillbirth places metadata
+            'places_of_delivery': sorted(list(unique_stillbirth_places)),
             'lost_categories': ['Wrong Number', 'Switched Off', 'Not Responding', 'Contact Not Available', 'Out of District / Migrated', 'Other Reason'],
             'anmol_stats': {
                 'home': home_stats,
